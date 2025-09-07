@@ -1,6 +1,6 @@
 # recipez
 
-recipez is a Flask based web application for storing and sharing recipes with friends and family. It provides a REST API and HTML interface for managing recipes, categories, ingredients, images and steps.
+recipez is a Flask based web application for storing and sharing recipes with friends and family. It provides a REST API and HTML interface for managing recipes, categories, ingredients, images and steps. Coming soon!
 
 ## Features
 
