@@ -25,6 +25,9 @@ services:
     container_name: recipez-app
     restart: unless-stopped
 
+    # Host network for local LLM access (localhost:11434, etc.)
+    network_mode: host
+
     # Environment configuration
     env_file:
       - .env.docker
@@ -33,8 +36,8 @@ services:
       # Flask configuration
       - FLASK_ENV=${FLASK_ENV:-production}
 
-      # Database components (used if DATABASE_URL not provided)
-      - DB_HOST=${DB_HOST:-postgres}
+      # Database components (localhost since using host network)
+      - DB_HOST=${DB_HOST:-localhost}
       - DB_PORT=${DB_PORT:-5432}
       - DB_USER=${DB_USER:-recipez}
       - DB_PASSWORD=${DB_PASSWORD}
@@ -50,8 +53,7 @@ services:
       # Database wait timeout
       - DB_WAIT_TIMEOUT=${DB_WAIT_TIMEOUT:-30}
 
-    ports:
-      - "${APP_PORT:-5000}:5000"
+    # Note: ports not needed with network_mode: host (app binds directly to host)
 
     volumes:
       # Persistent storage for uploaded images
@@ -71,9 +73,6 @@ services:
       retries: 3
       start_period: 60s
 
-    networks:
-      - recipez-network
-
     profiles:
       - default
 
@@ -84,6 +83,9 @@ services:
     image: postgres:16-alpine
     container_name: recipez-postgres
     restart: unless-stopped
+
+    # Host network (binds to localhost:5432)
+    network_mode: host
 
     environment:
       - POSTGRES_USER=${DB_USER:-recipez}
@@ -105,9 +107,6 @@ services:
       retries: 5
       start_period: 10s
 
-    networks:
-      - recipez-network
-
     # Shared memory for PostgreSQL performance
     shm_size: 128mb
 
@@ -124,6 +123,9 @@ services:
     container_name: recipez-app
     restart: unless-stopped
 
+    # Host network for local LLM access
+    network_mode: host
+
     env_file:
       - .env.docker
 
@@ -133,8 +135,7 @@ services:
       - INIT_DB=${INIT_DB:-false}
       - DB_WAIT_TIMEOUT=${DB_WAIT_TIMEOUT:-30}
 
-    ports:
-      - "${APP_PORT:-5000}:5000"
+    # Note: ports not needed with network_mode: host
 
     volumes:
       - recipez-uploads:/app/recipez/static/uploads
@@ -146,9 +147,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-
-    networks:
-      - recipez-network
 
     profiles:
       - external-db
@@ -175,7 +173,5 @@ volumes:
 # =============================================================================
 # NETWORKS
 # =============================================================================
-networks:
-  recipez-network:
-    name: recipez-network
-    driver: bridge
+# Note: Using network_mode: host for all services (local LLM access)
+# No custom networks needed
