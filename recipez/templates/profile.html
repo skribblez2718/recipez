@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="min-h-screen bg-background px-6 py-8">
+    <div class="max-w-3xl mx-auto">
+        {# Back Button #}
+        <div class="mb-6">
+            <a href="/" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left mr-2"></i>
+                Back
+            </a>
+        </div>
+
+        {# Flash Messages #}
+        {% if get_flashed_messages() %}
+            <div class="mb-6">
+                {% include "message.html" %}
+            </div>
+        {% endif %}
+
+        {# Profile Card #}
+        <div class="card p-8">
+            {# Profile Header #}
+            <div class="flex flex-col items-center mb-8">
+                <div class="w-32 h-32 rounded-full overflow-hidden profile-image-lg shadow-lg mb-4">
+                    <img
+                        src="{{ profile.profile_image_url or '/static/img/default_user.png' }}"
+                        class="w-full h-full object-cover"
+                        alt="Profile image"
+                    >
+                </div>
+                <h1 class="text-3xl font-bold page-title">Profile</h1>
+            </div>
+
+            {# Profile Image Upload Section #}
+            <div class="mb-8 pb-8 border-b border-[color:var(--border)]">
+                <h2 class="text-xl font-semibold section-title mb-4">
+                    <i class="fa-solid fa-image mr-2 text-[#ff6b6b]"></i>
+                    Profile Image
+                </h2>
+                <form method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group">
+                        <label for="image" class="form-label">Upload New Image</label>
+                        <input
+                            type="file"
+                            name="image"
+                            id="image"
+                            accept="image/*"
+                            class="form-control"
+                        >
+                        <p class="form-text mt-2">Recommended: Square image, at least 400x400px</p>
+                    </div>
+                    <button type="submit" class="btn btn-coral">
+                        <i class="fa-solid fa-upload mr-2"></i>
+                        Upload Image
+                    </button>
+                </form>
+            </div>
+
+            {# API Keys Management Section #}
+            <div class="mb-8 pb-8 border-b border-[color:var(--border)]">
+                <h2 class="text-xl font-semibold section-title mb-4">
+                    <i class="fa-solid fa-key mr-2 text-[#ff6b6b]"></i>
+                    API Keys
+                </h2>
+
+                {# Hidden input for JWT token (used by JS for API calls) #}
+                <input type="hidden" id="api-key" value="{{ jwt_token }}">
+
+                {# List of existing API keys #}
+                {% if api_keys %}
+                <div class="space-y-3 mb-6" id="api-keys-list">
+                    {% for key in api_keys %}
+                    <div class="p-4 rounded-lg bg-[color:var(--surface)] border border-[color:var(--border)]"
+                         data-api-key-id="{{ key.api_key_id }}">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-[color:var(--text)]">
+                                    {{ key.api_key_name }}
+                                    {% if key.is_expired %}
+                                    <span class="ml-2 text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">Expired</span>
+                                    {% else %}
+                                    <span class="ml-2 text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded">Active</span>
+                                    {% endif %}
+                                </h3>
+                                <p class="text-sm text-[color:var(--text-secondary)] mt-1">
+                                    Created: {{ key.api_key_created_at[:10] if key.api_key_created_at else 'Unknown' }}
+                                    &bull;
+                                    Expires: {{ key.api_key_expires_at[:10] if key.api_key_expires_at else 'Never' }}
+                                </p>
+                                <p class="text-xs text-[color:var(--text-muted)] mt-2">
+                                    Scopes: {{ key.api_key_scopes | length }} permission{{ 's' if key.api_key_scopes | length != 1 else '' }}
+                                </p>
+                            </div>
+                            <button type="button"
+                                    class="btn btn-outline-coral btn-sm revoke-api-key-btn"
+                                    data-api-key-id="{{ key.api_key_id }}"
+                                    data-api-key-name="{{ key.api_key_name }}">
+                                <i class="fa-solid fa-trash mr-1"></i>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-[color:var(--text-secondary)] mb-4" id="no-api-keys-message">
+                    You haven't created any API keys yet.
+                </p>
+                {% endif %}
+
+                {# Create API Key Button #}
+                <button type="button"
+                        class="btn btn-coral"
+                        data-modal-target="createApiKeyModal"
+                        id="create-api-key-btn">
+                    <i class="fa-solid fa-plus mr-2"></i>
+                    Create API Key
+                </button>
+                <p class="form-text mt-2">Create long-lived API keys with custom permissions for your applications</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{# Import modal macro #}
+{% from "components/modal.html" import modal, confirm_modal %}
+
+{# Create API Key Modal #}
+{% call modal('createApiKeyModal', 'Create API Key', size='lg') %}
+<form id="create-api-key-form">
+    {# Name Field #}
+    <div class="form-group mb-4">
+        <label for="api-key-name" class="form-label">Name</label>
+        <input type="text"
+               id="api-key-name"
+               name="name"
+               class="form-control"
+               placeholder="My API Key"
+               required
+               maxlength="100">
+        <p class="form-text">A descriptive name to identify this key</p>
+    </div>
+
+    {# Expiration Field #}
+    <div class="form-group mb-4">
+        <label class="form-label">Expiration</label>
+        <div class="flex items-center gap-4 mb-2">
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox"
+                       id="never-expires"
+                       name="never_expires"
+                       class="w-4 h-4 rounded border-[color:var(--border)] accent-[#ff6b6b]"
+                       checked>
+                <span class="text-sm text-[color:var(--text)]">Never Expires</span>
+            </label>
+        </div>
+        <input type="date"
+               id="api-key-expires"
+               name="expires_at"
+               class="form-control"
+               disabled>
+    </div>
+
+    {# Scopes Selection #}
+    <div class="form-group mb-4">
+        <label class="form-label">Permissions (Scopes)</label>
+
+        {# Resource Scopes #}
+        {% for resource, scopes in available_scopes.resources.items() %}
+        <div class="mb-4 p-3 rounded-lg bg-[color:var(--background)]">
+            <h4 class="font-semibold text-sm text-[color:var(--text)] mb-2">{{ resource }}</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {% for scope in scopes %}
+                {% set action = scope.split(':')[1] | capitalize %}
+                <label class="flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox"
+                           name="scopes"
+                           value="{{ scope }}"
+                           class="scope-checkbox w-4 h-4 rounded border-[color:var(--border)] accent-[#ff6b6b]">
+                    <span class="text-[color:var(--text-secondary)]">{{ action }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {# AI Scopes #}
+        {% for resource, scopes in available_scopes.ai.items() %}
+        <div class="mb-4 p-3 rounded-lg bg-[color:var(--background)]">
+            <h4 class="font-semibold text-sm text-[color:var(--text)] mb-2">{{ resource }}</h4>
+            <div class="grid grid-cols-2 gap-2">
+                {% for scope in scopes %}
+                {% set action = scope.split(':')[1].replace('-', ' ') | title %}
+                <label class="flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox"
+                           name="scopes"
+                           value="{{ scope }}"
+                           class="scope-checkbox w-4 h-4 rounded border-[color:var(--border)] accent-[#ff6b6b]">
+                    <span class="text-[color:var(--text-secondary)]">{{ action }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {# Email Scopes #}
+        {% for resource, scopes in available_scopes.email.items() %}
+        <div class="mb-4 p-3 rounded-lg bg-[color:var(--background)]">
+            <h4 class="font-semibold text-sm text-[color:var(--text)] mb-2">{{ resource }}</h4>
+            <div class="grid grid-cols-2 gap-2">
+                {% for scope in scopes %}
+                {% set action = scope.split(':')[1].replace('-', ' ') | title %}
+                <label class="flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox"
+                           name="scopes"
+                           value="{{ scope }}"
+                           class="scope-checkbox w-4 h-4 rounded border-[color:var(--border)] accent-[#ff6b6b]">
+                    <span class="text-[color:var(--text-secondary)]">{{ action }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="modal-footer flex justify-end gap-3 pt-4 border-t border-[color:var(--border)]">
+        <button type="button" class="btn btn-secondary close-modal">Cancel</button>
+        <button type="submit" class="btn btn-coral" id="create-api-key-submit">
+            <i class="fa-solid fa-key mr-2"></i>
+            Create Key
+        </button>
+    </div>
+</form>
+{% endcall %}
+
+{# Success Modal - Shows the token ONCE #}
+{% call modal('apiKeySuccessModal', 'API Key Created', size='md') %}
+<div class="text-center">
+    <div class="mb-4">
+        <i class="fa-solid fa-check-circle text-green-500 text-4xl"></i>
+    </div>
+    <p class="text-[color:var(--text)] mb-4">
+        Your API key has been created. <strong>Copy it now</strong> - you won't be able to see it again!
+    </p>
+    <div class="mb-4">
+        <input type="text"
+               id="new-api-key-token"
+               class="form-control font-mono text-sm"
+               readonly>
+    </div>
+    <button type="button"
+            class="btn btn-coral w-full mb-2"
+            id="copy-new-api-key">
+        <i class="fa-solid fa-copy mr-2"></i>
+        Copy to Clipboard
+    </button>
+    <p class="text-xs text-[color:var(--text-muted)]" id="copy-status"></p>
+</div>
+<div class="modal-footer flex justify-end pt-4 border-t border-[color:var(--border)]">
+    <button type="button" class="btn btn-secondary close-modal" id="close-success-modal">Done</button>
+</div>
+{% endcall %}
+
+{# Delete Confirmation Modal #}
+{{ confirm_modal(
+    'revokeApiKeyModal',
+    'Delete API Key?',
+    'This action cannot be undone. Any applications using this key will stop working immediately.',
+    confirm_btn_id='confirm-revoke-btn',
+    confirm_text='Delete',
+    variant='danger'
+) }}
+
+{% endblock %}

@@ -1,0 +1,220 @@
+{# Input Component Macros - Design specifications from ux.md #}
+
+{#
+  Text Input: Standard text input field
+  Usage: {{ text_input('recipe-name', 'Recipe Name', required=true, placeholder='Enter recipe name') }}
+  CRITICAL: Preserves exact field names for WTForms/API compatibility
+#}
+{% macro text_input(name, label='', value='', placeholder='', required=false, disabled=false, classes='', id='', type='text', autocomplete='', error='') %}
+<div class="form-group">
+  {% if label %}
+  <label for="{{ id or name }}" class="form-label">
+    {{ label }}
+    {% if required %}<span class="text-error" aria-label="required">*</span>{% endif %}
+  </label>
+  {% endif %}
+  <input
+    type="{{ type }}"
+    id="{{ id or name }}"
+    name="{{ name }}"
+    value="{{ value }}"
+    {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+    class="form-control {% if error %}is-invalid{% endif %} {{ classes }}"
+    {% if required %}required{% endif %}
+    {% if disabled %}disabled{% endif %}
+    {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+    {% if error %}aria-describedby="{{ id or name }}-error" aria-invalid="true"{% endif %}
+  />
+  {% if error %}
+  <div id="{{ id or name }}-error" class="invalid-feedback">{{ error }}</div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{#
+  Textarea: Multi-line text input
+  Usage: {{ textarea('description', 'Description', rows=4) }}
+#}
+{% macro textarea(name, label='', value='', placeholder='', required=false, disabled=false, classes='', id='', rows=4, error='') %}
+<div class="form-group">
+  {% if label %}
+  <label for="{{ id or name }}" class="form-label">
+    {{ label }}
+    {% if required %}<span class="text-error" aria-label="required">*</span>{% endif %}
+  </label>
+  {% endif %}
+  <textarea
+    id="{{ id or name }}"
+    name="{{ name }}"
+    {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+    class="form-control {% if error %}is-invalid{% endif %} {{ classes }}"
+    {% if required %}required{% endif %}
+    {% if disabled %}disabled{% endif %}
+    {% if error %}aria-describedby="{{ id or name }}-error" aria-invalid="true"{% endif %}
+    rows="{{ rows }}"
+  >{{ value }}</textarea>
+  {% if error %}
+  <div id="{{ id or name }}-error" class="invalid-feedback">{{ error }}</div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{#
+  Select Dropdown: Dropdown selection field
+  Usage: {{ select('category-selector', 'Category', options, selected_value) }}
+  CRITICAL: Preserves exact field names and option values
+#}
+{% macro select(name, label='', options=[], selected='', required=false, disabled=false, classes='', id='', error='') %}
+<div class="form-group">
+  {% if label %}
+  <label for="{{ id or name }}" class="form-label">
+    {{ label }}
+    {% if required %}<span class="text-error" aria-label="required">*</span>{% endif %}
+  </label>
+  {% endif %}
+  <select
+    id="{{ id or name }}"
+    name="{{ name }}"
+    class="form-select {% if error %}is-invalid{% endif %} {{ classes }}"
+    {% if required %}required{% endif %}
+    {% if disabled %}disabled{% endif %}
+    {% if error %}aria-describedby="{{ id or name }}-error" aria-invalid="true"{% endif %}
+  >
+    {% if not required %}
+    <option value="">-- Select --</option>
+    {% endif %}
+    {% for option in options %}
+      {% if option is mapping %}
+      <option value="{{ option.value }}" {% if option.value == selected %}selected{% endif %}>
+        {{ option.label }}
+      </option>
+      {% else %}
+      <option value="{{ option }}" {% if option == selected %}selected{% endif %}>
+        {{ option }}
+      </option>
+      {% endif %}
+    {% endfor %}
+  </select>
+  {% if error %}
+  <div id="{{ id or name }}-error" class="invalid-feedback">{{ error }}</div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{#
+  Checkbox: Single checkbox input
+  Usage: {{ checkbox('agree-terms', 'I agree to the terms', checked=false) }}
+#}
+{% macro checkbox(name, label, checked=false, disabled=false, classes='', id='', value='on') %}
+<div class="form-group">
+  <div class="flex items-center gap-2">
+    <input
+      type="checkbox"
+      id="{{ id or name }}"
+      name="{{ name }}"
+      value="{{ value }}"
+      class="w-5 h-5 rounded border-2 border-gray-300 focus:ring-4 focus:ring-primary/20 {{ classes }}"
+      {% if checked %}checked{% endif %}
+      {% if disabled %}disabled{% endif %}
+    />
+    <label for="{{ id or name }}" class="form-label mb-0 cursor-pointer">
+      {{ label }}
+    </label>
+  </div>
+</div>
+{% endmacro %}
+
+{#
+  Radio Button: Single radio button (usually used in groups)
+  Usage: {{ radio('portion', 'Normal', value='normal', checked=true) }}
+#}
+{% macro radio(name, label, value, checked=false, disabled=false, classes='', id='') %}
+<div class="flex items-center gap-2">
+  <input
+    type="radio"
+    id="{{ id or (name ~ '-' ~ value) }}"
+    name="{{ name }}"
+    value="{{ value }}"
+    class="w-5 h-5 rounded-full border-2 border-gray-300 focus:ring-4 focus:ring-primary/20 {{ classes }}"
+    {% if checked %}checked{% endif %}
+    {% if disabled %}disabled{% endif %}
+  />
+  <label for="{{ id or (name ~ '-' ~ value) }}" class="form-label mb-0 cursor-pointer">
+    {{ label }}
+  </label>
+</div>
+{% endmacro %}
+
+{#
+  File Upload Input: File upload field with drag-and-drop area
+  Usage: {{ file_upload('image', 'Recipe Image', accept='image/png, image/jpeg') }}
+  CRITICAL: Preserves exact field name for form submission
+#}
+{% macro file_upload(name, label='', accept='', required=false, disabled=false, classes='', id='', error='') %}
+<div class="form-group">
+  {% if label %}
+  <label for="{{ id or name }}" class="form-label">
+    {{ label }}
+    {% if required %}<span class="text-error" aria-label="required">*</span>{% endif %}
+  </label>
+  {% endif %}
+  <div class="relative border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary-500 hover:bg-primary-50 transition-colors cursor-pointer {% if error %}border-error-500{% endif %}">
+    <input
+      type="file"
+      id="{{ id or name }}"
+      name="{{ name }}"
+      {% if accept %}accept="{{ accept }}"{% endif %}
+      class="absolute inset-0 w-full h-full opacity-0 cursor-pointer {{ classes }}"
+      {% if required %}required{% endif %}
+      {% if disabled %}disabled{% endif %}
+      {% if error %}aria-describedby="{{ id or name }}-error" aria-invalid="true"{% endif %}
+    />
+    <div class="pointer-events-none">
+      <i class="fas fa-camera text-4xl text-gray-400 mb-4" aria-hidden="true"></i>
+      <p class="text-base text-gray-600">
+        <span class="text-primary-600 underline">Click to upload</span> or drag and drop
+      </p>
+      {% if accept %}
+      <p class="text-sm text-gray-500 mt-2">{{ accept }}</p>
+      {% endif %}
+    </div>
+  </div>
+  {% if error %}
+  <div id="{{ id or name }}-error" class="invalid-feedback">{{ error }}</div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{#
+  Search Input: Input field with search icon
+  Usage: {{ search_input('item-search', placeholder='Search recipes...') }}
+#}
+{% macro search_input(name, label='', placeholder='Search...', classes='', id='') %}
+<div class="form-group">
+  {% if label %}
+  <label for="{{ id or name }}" class="form-label">{{ label }}</label>
+  {% endif %}
+  <div class="relative">
+    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+      <i class="fas fa-search text-gray-400" aria-hidden="true"></i>
+    </div>
+    <input
+      type="search"
+      id="{{ id or name }}"
+      name="{{ name }}"
+      placeholder="{{ placeholder }}"
+      class="form-control pl-12 {{ classes }}"
+    />
+  </div>
+</div>
+{% endmacro %}
+
+{#
+  Helper Text: Displays helper or error text below inputs
+  Usage: {{ helper_text('Must be at least 8 characters', error=true) }}
+#}
+{% macro helper_text(text, error=false) %}
+<div class="form-text {% if error %}text-error-500{% endif %}">
+  {{ text }}
+</div>
+{% endmacro %}

@@ -1,0 +1,64 @@
+# Version control
+.git
+.gitignore
+
+# Python artifacts
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+env/
+.eggs/
+*.egg-info/
+*.egg
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov/
+.tox
+.nox
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Documentation (keep CLAUDE.md for context)
+*.md
+!CLAUDE.md
+!requirements.txt
+
+# Local environment files
+.env
+.env.*
+!.env.docker.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Tailwind binary (large, platform-specific)
+tailwindcss-*
+
+# Uploads directory content (will be volume-mounted)
+recipez/static/uploads/*
+!recipez/static/uploads/.gitkeep
+
+# Certificates (will be volume-mounted)
+recipez/certs/*
+
+# Build artifacts
+build/
+dist/
+
+# Test database
+*.db
+*.sqlite3
+
+# Poetry lock (using requirements.txt in Docker)
+poetry.lock

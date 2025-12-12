@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="min-h-screen bg-background flex items-center justify-center px-6 py-8">
+    <div class="w-full max-w-md">
+        {# Flash Messages #}
+        {% if get_flashed_messages() %}
+            <div class="mb-6">
+                {% include "message.html" %}
+            </div>
+        {% endif %}
+
+        {# Category Form Card #}
+        <div class="card p-8">
+            <h1 class="text-2xl font-bold page-title mb-6">Update Category</h1>
+
+            <form method="POST" action="/category/update/{{ category_id }}" class="space-y-6">
+                {{ update_form.csrf_token }}
+
+                <div class="form-group">
+                    {{ update_form.name.label(class_="form-label") }}
+                    {{ update_form.name(class="form-control", placeholder="e.g., Desserts, Main Course", minlength=2, maxlength=50) }}
+                </div>
+
+                <div class="flex justify-between items-center pt-4">
+                    <a href="/" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrow-left mr-2"></i>
+                        Back
+                    </a>
+                    <button type="submit" name="update_category" class="btn btn-success btn-lg">
+                        <i class="fa-solid fa-floppy-disk mr-2"></i>
+                        Save
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {# Delete Category Section #}
+        <div class="card p-6 mt-4">
+            <h2 class="text-lg font-semibold section-title mb-4">Danger Zone</h2>
+            <button id="delete-category-btn" type="button" class="btn btn-danger w-full">
+                <i class="fa-solid fa-trash mr-2"></i>
+                Delete Category
+            </button>
+        </div>
+    </div>
+</div>
+
+{# Delete Confirmation Modal #}
+<div id="deleteModal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content theme-modal-bg">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Category</h5>
+                <button type="button" class="btn-close" aria-label="Close" id="closeModalBtn"></button>
+            </div>
+            <div class="modal-body">
+                {# Loading state #}
+                <div id="deleteModalLoading" class="text-center py-4">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p class="text-[color:var(--text-secondary)]">Checking category usage...</p>
+                </div>
+
+                {# Error state #}
+                <div id="deleteModalError" class="hidden">
+                    <div class="alert alert-danger">
+                        <i class="fa-solid fa-exclamation-triangle mr-2"></i>
+                        <span id="deleteModalErrorMsg">An error occurred</span>
+                    </div>
+                </div>
+
+                {# Cannot delete state (other users' recipes use this category) #}
+                <div id="deleteModalCannotDelete" class="hidden">
+                    <div class="alert alert-warning">
+                        <i class="fa-solid fa-exclamation-triangle mr-2"></i>
+                        <span id="deleteModalCannotDeleteReason"></span>
+                    </div>
+                </div>
+
+                {# Can delete - with affected recipes #}
+                <div id="deleteModalWithRecipes" class="hidden">
+                    <p class="text-[color:var(--text-secondary)] mb-4">
+                        You have <strong id="affectedRecipeCount"></strong> recipe(s) using this category.
+                        Please select new categories for them before deleting:
+                    </p>
+
+                    <div id="recipeUpdateForm" class="space-y-4 max-h-64 overflow-y-auto mb-4">
+                        {# Recipe rows will be inserted here dynamically #}
+                    </div>
+
+                    <div class="bg-[color:var(--bg-subtle)] rounded-lg p-3 text-sm text-[color:var(--text-muted)]">
+                        <i class="fa-solid fa-info-circle mr-1"></i>
+                        Recipes will be reassigned to the selected categories before the category is deleted.
+                    </div>
+                </div>
+
+                {# Can delete - no affected recipes #}
+                <div id="deleteModalNoRecipes" class="hidden">
+                    <p class="text-[color:var(--text-secondary)]">
+                        Are you sure you want to delete the <span class="font-bold text-[color:var(--text)]">{{ update_form.name.data or category_name }}</span> category?
+                    </p>
+                    <p class="text-sm text-[color:var(--text-muted)] mt-2">This action cannot be undone.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div id="deleteModalButtons" class="flex gap-3 w-full">
+                    <button type="button" id="cancelDeleteBtn" class="btn btn-secondary flex-1">Cancel</button>
+                    <button type="button" id="confirmDeleteBtn" class="btn btn-danger flex-1 hidden">
+                        <i class="fa-solid fa-trash mr-2"></i>
+                        Delete Category
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ script_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteBtn = document.getElementById('delete-category-btn');
+    const modal = document.getElementById('deleteModal');
+    const closeBtn = document.getElementById('closeModalBtn');
+    const cancelBtn = document.getElementById('cancelDeleteBtn');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+
+    // Modal content sections
+    const loadingDiv = document.getElementById('deleteModalLoading');
+    const errorDiv = document.getElementById('deleteModalError');
+    const errorMsg = document.getElementById('deleteModalErrorMsg');
+    const cannotDeleteDiv = document.getElementById('deleteModalCannotDelete');
+    const cannotDeleteReason = document.getElementById('deleteModalCannotDeleteReason');
+    const withRecipesDiv = document.getElementById('deleteModalWithRecipes');
+    const noRecipesDiv = document.getElementById('deleteModalNoRecipes');
+    const recipeUpdateForm = document.getElementById('recipeUpdateForm');
+    const affectedRecipeCount = document.getElementById('affectedRecipeCount');
+
+    const categoryId = '{{ category_id }}';
+    let allCategories = [];
+    let affectedRecipes = [];
+
+    const hideAllSections = () => {
+        loadingDiv.classList.add('hidden');
+        errorDiv.classList.add('hidden');
+        cannotDeleteDiv.classList.add('hidden');
+        withRecipesDiv.classList.add('hidden');
+        noRecipesDiv.classList.add('hidden');
+        confirmBtn.classList.add('hidden');
+    };
+
+    const showModal = async () => {
+        modal.classList.add('show');
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+
+        // Reset to loading state
+        hideAllSections();
+        loadingDiv.classList.remove('hidden');
+
+        try {
+            // Fetch delete preview and categories in parallel
+            const [previewResponse, categoriesResponse] = await Promise.all([
+                fetch(`/api/category/delete/${categoryId}/preview`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer {{ session.get("user_jwt", "") }}'
+                    }
+                }),
+                fetch('/api/category/all', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer {{ session.get("user_jwt", "") }}'
+                    }
+                })
+            ]);
+
+            const previewData = await previewResponse.json();
+            const categoriesData = await categoriesResponse.json();
+
+            hideAllSections();
+
+            if (!previewResponse.ok || previewData.response?.error) {
+                errorMsg.textContent = previewData.response?.error || 'Failed to check category';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            const preview = previewData.response;
+            allCategories = (categoriesData.response || []).filter(c => c.category_id !== categoryId);
+
+            if (!preview.can_delete) {
+                cannotDeleteReason.textContent = preview.reason;
+                cannotDeleteDiv.classList.remove('hidden');
+                return;
+            }
+
+            affectedRecipes = preview.affected_recipes || [];
+
+            if (affectedRecipes.length > 0) {
+                affectedRecipeCount.textContent = affectedRecipes.length;
+
+                // Build the recipe update form
+                recipeUpdateForm.innerHTML = affectedRecipes.map((recipe, index) => `
+                    <div class="flex items-center gap-4 p-3 bg-[color:var(--bg-subtle)] rounded-lg">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-[color:var(--text)] truncate">${escapeHtml(recipe.recipe_name)}</p>
+                        </div>
+                        <div class="flex-shrink-0 w-48">
+                            <select
+                                class="form-control recipe-category-select"
+                                data-recipe-id="${recipe.recipe_id}"
+                                required
+                            >
+                                <option value="">Select category...</option>
+                                ${allCategories.map(cat => `
+                                    <option value="${cat.category_id}">${escapeHtml(cat.category_name)}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
+                `).join('');
+
+                withRecipesDiv.classList.remove('hidden');
+            } else {
+                noRecipesDiv.classList.remove('hidden');
+            }
+
+            confirmBtn.classList.remove('hidden');
+
+        } catch (error) {
+            hideAllSections();
+            errorMsg.textContent = 'Failed to check category usage. Please try again.';
+            errorDiv.classList.remove('hidden');
+            console.error('Error fetching delete preview:', error);
+        }
+    };
+
+    const hideModal = () => {
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    };
+
+    const escapeHtml = (text) => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    };
+
+    const handleDelete = async () => {
+        // If there are affected recipes, batch update their categories first
+        if (affectedRecipes.length > 0) {
+            const selects = document.querySelectorAll('.recipe-category-select');
+            const updates = [];
+            let hasError = false;
+
+            selects.forEach(select => {
+                if (!select.value) {
+                    hasError = true;
+                    select.classList.add('border-red-500');
+                } else {
+                    select.classList.remove('border-red-500');
+                    updates.push({
+                        recipe_id: select.dataset.recipeId,
+                        category_id: select.value
+                    });
+                }
+            });
+
+            if (hasError) {
+                alert('Please select a category for all recipes before deleting.');
+                return;
+            }
+
+            // Batch update recipe categories
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Updating...';
+
+            try {
+                const updateResponse = await fetch('/api/recipe/batch-update-category', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer {{ session.get("user_jwt", "") }}'
+                    },
+                    body: JSON.stringify({ updates })
+                });
+
+                const updateData = await updateResponse.json();
+
+                if (!updateResponse.ok || updateData.response?.error) {
+                    throw new Error(updateData.response?.error || 'Failed to update recipes');
+                }
+
+                if (updateData.response?.failed_count > 0) {
+                    const failedRecipes = updateData.response.failed.map(f => f.reason).join(', ');
+                    throw new Error(`Some recipes failed to update: ${failedRecipes}`);
+                }
+
+            } catch (error) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fa-solid fa-trash mr-2"></i>Delete Category';
+                alert('Error updating recipes: ' + error.message);
+                return;
+            }
+        }
+
+        // Now delete the category via form submission
+        confirmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Deleting...';
+
+        // Create and submit a form to delete the category
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/category/update/{{ category_id }}';
+
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = '{{ delete_form.csrf_token._value() }}';
+        form.appendChild(csrfInput);
+
+        // Add delete button name
+        const deleteInput = document.createElement('input');
+        deleteInput.type = 'hidden';
+        deleteInput.name = 'delete_category';
+        deleteInput.value = 'Delete';
+        form.appendChild(deleteInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    };
+
+    deleteBtn?.addEventListener('click', showModal);
+    closeBtn?.addEventListener('click', hideModal);
+    cancelBtn?.addEventListener('click', hideModal);
+    confirmBtn?.addEventListener('click', handleDelete);
+
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) hideModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('show')) hideModal();
+    });
+});
+</script>
+{% endblock content %}

@@ -1,0 +1,25 @@
+{% with messages = get_flashed_messages(with_categories=True) %}
+    {% if messages %}
+        <div class="alert-container">
+            <div class="alert alert-{{ messages[0][0] }} alert-dismissible fade show" role="alert" data-auto-dismiss="5000">
+                <div class="flex justify-between items-center">
+                    <span class="flex items-center">
+                        {% if messages[0][0] == "danger" %}
+                            <i class="fa-solid fa-circle-xmark mr-3" aria-hidden="true"></i>
+                        {% elif messages[0][0] == "success" %}
+                            <i class="fa-solid fa-circle-check mr-3" aria-hidden="true"></i>
+                        {% elif messages[0][0] == "warning" %}
+                            <i class="fa-solid fa-triangle-exclamation mr-3" aria-hidden="true"></i>
+                        {% elif messages[0][0] == "info" %}
+                            <i class="fa-solid fa-circle-info mr-3" aria-hidden="true"></i>
+                        {% endif %}
+                        {{ messages[0][1] }}
+                    </span>
+                    <button type="button" class="alert-dismiss-btn ml-4" aria-label="Close">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endwith %}

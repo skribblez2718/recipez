@@ -1,0 +1,181 @@
+# =============================================================================
+# RECIPEZ DOCKER COMPOSE CONFIGURATION
+# =============================================================================
+# Multi-container orchestration for Recipez application with PostgreSQL database.
+#
+# Usage:
+#   With bundled database:     docker-compose up -d
+#   With external database:    docker-compose --profile external-db up -d
+#   View logs:                 docker-compose logs -f
+#   Stop:                      docker-compose down
+#
+# First-time setup:
+#   1. cp .env.docker.example .env.docker
+#   2. Edit .env.docker with your configuration
+#   3. docker-compose up -d
+
+services:
+  # ===========================================================================
+  # RECIPEZ APPLICATION (with bundled database)
+  # ===========================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: recipez-app
+    restart: unless-stopped
+
+    # Environment configuration
+    env_file:
+      - .env.docker
+
+    environment:
+      # Flask configuration
+      - FLASK_ENV=${FLASK_ENV:-production}
+
+      # Database components (used if DATABASE_URL not provided)
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-recipez}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-recipez}
+      - DB_SCHEMA=${DB_SCHEMA:-recipez}
+
+      # Override for external database (takes priority if set)
+      - DATABASE_URL=${DATABASE_URL:-}
+
+      # Initialization flag
+      - INIT_DB=${INIT_DB:-false}
+
+      # Database wait timeout
+      - DB_WAIT_TIMEOUT=${DB_WAIT_TIMEOUT:-30}
+
+    ports:
+      - "${APP_PORT:-5000}:5000"
+
+    volumes:
+      # Persistent storage for uploaded images
+      - recipez-uploads:/app/recipez/static/uploads
+
+      # JWT certificates (persist across restarts)
+      - recipez-certs:/app/recipez/certs
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    networks:
+      - recipez-network
+
+    profiles:
+      - default
+
+  # ===========================================================================
+  # POSTGRESQL DATABASE (bundled)
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: recipez-postgres
+    restart: unless-stopped
+
+    environment:
+      - POSTGRES_USER=${DB_USER:-recipez}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME:-recipez}
+      - DB_SCHEMA=${DB_SCHEMA:-recipez}
+
+    volumes:
+      # Persistent database storage
+      - recipez-pgdata:/var/lib/postgresql/data
+
+      # Initialization script (creates schema on first run)
+      - ./init-db.sh:/docker-entrypoint-initdb.d/01-init-schema.sh:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-recipez} -d ${DB_NAME:-recipez}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    networks:
+      - recipez-network
+
+    # Shared memory for PostgreSQL performance
+    shm_size: 128mb
+
+    profiles:
+      - default
+
+  # ===========================================================================
+  # RECIPEZ APPLICATION (for external database)
+  # ===========================================================================
+  app-external:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: recipez-app
+    restart: unless-stopped
+
+    env_file:
+      - .env.docker
+
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - DATABASE_URL=${DATABASE_URL}
+      - INIT_DB=${INIT_DB:-false}
+      - DB_WAIT_TIMEOUT=${DB_WAIT_TIMEOUT:-30}
+
+    ports:
+      - "${APP_PORT:-5000}:5000"
+
+    volumes:
+      - recipez-uploads:/app/recipez/static/uploads
+      - recipez-certs:/app/recipez/certs
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    networks:
+      - recipez-network
+
+    profiles:
+      - external-db
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  # User-uploaded recipe images
+  recipez-uploads:
+    name: recipez-uploads
+    driver: local
+
+  # PostgreSQL database files
+  recipez-pgdata:
+    name: recipez-pgdata
+    driver: local
+
+  # JWT signing certificates
+  recipez-certs:
+    name: recipez-certs
+    driver: local
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  recipez-network:
+    name: recipez-network
+    driver: bridge

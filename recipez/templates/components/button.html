@@ -1,0 +1,99 @@
+{# Button Component Macro - Design specifications from ux.md #}
+
+{#
+  Primary Button: Main actions (Create, Submit, Save)
+  Usage: {{ button('Create Recipe', variant='primary', type='submit', name='submit-recipe') }}
+#}
+{% macro button(text, variant='primary', type='button', name='', id='', classes='', disabled=false, full_width=false, icon='') %}
+<button
+  type="{{ type }}"
+  {% if name %}name="{{ name }}"{% endif %}
+  {% if id %}id="{{ id }}"{% endif %}
+  class="btn btn-{{ variant }} {% if full_width %}btn-full{% endif %} {{ classes }}"
+  {% if disabled %}disabled{% endif %}
+  aria-label="{{ text }}"
+>
+  {% if icon %}
+  <i class="{{ icon }} mr-2" aria-hidden="true"></i>
+  {% endif %}
+  {{ text }}
+</button>
+{% endmacro %}
+
+{#
+  Secondary Button: Less prominent actions (Cancel, Back)
+  Usage: {{ button_secondary('Cancel', name='cancel') }}
+#}
+{% macro button_secondary(text, type='button', name='', id='', classes='', disabled=false) %}
+{{ button(text, variant='secondary', type=type, name=name, id=id, classes=classes, disabled=disabled) }}
+{% endmacro %}
+
+{#
+  Tertiary/Ghost Button: Subtle actions (Optional features)
+  Usage: {{ button_tertiary('Skip', id='skip-btn') }}
+#}
+{% macro button_tertiary(text, type='button', name='', id='', classes='', disabled=false) %}
+{{ button(text, variant='tertiary', type=type, name=name, id=id, classes=classes, disabled=disabled) }}
+{% endmacro %}
+
+{#
+  Danger Button: Destructive actions (Delete, Remove)
+  Usage: {{ button_danger('Delete Recipe', name='delete-recipe', id='delete-recipe-btn') }}
+#}
+{% macro button_danger(text, type='button', name='', id='', classes='', disabled=false) %}
+{{ button(text, variant='danger', type=type, name=name, id=id, classes=classes, disabled=disabled) }}
+{% endmacro %}
+
+{#
+  Success Button: Positive confirmation actions
+  Usage: {{ button_success('Confirm', name='confirm-action') }}
+#}
+{% macro button_success(text, type='button', name='', id='', classes='', disabled=false) %}
+{{ button(text, variant='outline-success', type=type, name=name, id=id, classes=classes, disabled=disabled) }}
+{% endmacro %}
+
+{#
+  Icon-only Button: For actions represented by icons (close, edit, etc.)
+  Usage: {{ icon_button('fas fa-times', label='Close', id='close-modal') }}
+#}
+{% macro icon_button(icon_class, label, type='button', name='', id='', variant='secondary', classes='', disabled=false) %}
+<button
+  type="{{ type }}"
+  {% if name %}name="{{ name }}"{% endif %}
+  {% if id %}id="{{ id }}"{% endif %}
+  class="btn btn-{{ variant }} btn-sm {{ classes }}"
+  {% if disabled %}disabled{% endif %}
+  aria-label="{{ label }}"
+>
+  <i class="{{ icon_class }}" aria-hidden="true"></i>
+</button>
+{% endmacro %}
+
+{#
+  Link Button: Button styled as a link
+  Usage: {{ link_button('View Details', href='/recipe/123') }}
+#}
+{% macro link_button(text, href, variant='primary', classes='', target='') %}
+<a
+  href="{{ href }}"
+  class="btn btn-{{ variant }} {{ classes }}"
+  {% if target %}target="{{ target }}"{% endif %}
+  role="button"
+>
+  {{ text }}
+</a>
+{% endmacro %}
+
+{#
+  Button Group: Horizontal group of related buttons
+  Usage:
+    {% call button_group() %}
+      {{ button('Save', variant='primary') }}
+      {{ button('Cancel', variant='secondary') }}
+    {% endcall %}
+#}
+{% macro button_group(classes='') %}
+<div class="flex gap-3 {{ classes }}">
+  {{ caller() }}
+</div>
+{% endmacro %}

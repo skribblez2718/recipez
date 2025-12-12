@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Main Container - Centered with max-width #}
+<div class="min-h-screen bg-background px-6 py-8">
+    <div class="max-w-4xl mx-auto">
+        {# Header Actions - Back button + Share/Edit/Delete buttons #}
+        <div class="flex items-center justify-between mb-6">
+            {# Back Button (Left) #}
+            <a href="/" class="btn btn-secondary" aria-label="Go back to home">
+                <i class="fa-solid fa-arrow-left mr-2"></i>
+                Back
+            </a>
+
+            {# Action Buttons (Right) #}
+            <div class="flex gap-3">
+                {# Share Button - Available to all logged-in users #}
+                {% if g.user %}
+                    <button
+                        type="button"
+                        class="btn btn-coral"
+                        id="share-recipe-btn"
+                        data-modal-target="shareRecipeModal"
+                    >
+                        <i class="fa-solid fa-share-nodes mr-2"></i>
+                        Share
+                    </button>
+                {% endif %}
+
+                {# Edit/Delete Buttons - Only for recipe owner #}
+                {% if session.get("user_id") is not none and session.get("user_id") == recipe.recipe_author_id %}
+                    <a
+                        href="{{ url_for('recipe.update_recipe_view', pk=recipe.recipe_id) }}"
+                        class="btn btn-outline-warning"
+                    >
+                        <i class="fa-solid fa-pen mr-2"></i>
+                        Edit
+                    </a>
+                    <form id="delete-recipe-form" class="inline" action="{{ url_for('recipe.delete_recipe_view', pk=recipe.recipe_id) }}" method="POST">
+                        {% if delete_form %}{{ delete_form.csrf_token }}{% endif %}
+                        <button
+                            id="delete-recipe-btn"
+                            type="button"
+                            class="btn btn-danger"
+                            data-modal-target="confirmDeleteModal"
+                        >
+                            <i class="fa-solid fa-trash mr-2"></i>
+                            Delete
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Flash Messages #}
+        {% if get_flashed_messages() %}
+            <div class="mb-6">
+                {% include "message.html" %}
+            </div>
+        {% endif %}
+
+        {# Hero Image - Smaller size to show recipe content above the fold #}
+        <div class="w-full recipe-hero-image rounded-xl overflow-hidden mb-6">
+            <img
+                src="{{ recipe.recipe_image.image_url if recipe.recipe_image and recipe.recipe_image.image_url else '/static/img/default_recipe.png' }}"
+                alt="{{ recipe.recipe_name }}"
+                class="w-full h-full object-cover"
+            >
+        </div>
+
+        {# Recipe Title #}
+        <h1 class="text-4xl font-bold page-title mb-4">{{ recipe.recipe_name }}</h1>
+
+        {# Recipe Description #}
+        {% if recipe.recipe_description %}
+            <p class="text-lg text-[color:var(--text-secondary)] leading-relaxed mb-6">
+                {{ recipe.recipe_description }}
+            </p>
+        {% endif %}
+
+        {# Author Info #}
+        <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)] mb-8">
+            {% if recipe.recipe_author %}
+                {% if recipe.recipe_author.user_profile_image_url %}
+                    <img
+                        src="{{ recipe.recipe_author.user_profile_image_url }}"
+                        alt="{{ recipe.recipe_author.user_name }}"
+                        class="w-6 h-6 rounded-full object-cover"
+                    >
+                {% else %}
+                    <i class="fas fa-user" aria-hidden="true"></i>
+                {% endif %}
+                <span>{{ recipe.recipe_author.user_name }}</span>
+            {% else %}
+                <i class="fas fa-user" aria-hidden="true"></i>
+                <span>Unknown</span>
+            {% endif %}
+        </div>
+
+        {# Portion Selector - Half Recipe / Normal / Double #}
+        <div class="flex justify-center gap-2 mb-8">
+            <div class="inline-flex gap-2 flex-wrap justify-center" role="group" aria-label="Portion size">
+                <label class="portion-btn">
+                    <input
+                        type="radio"
+                        id="inlineRadio1"
+                        name="inlineRadioOptions"
+                        class="recipe-portion-form-check-input hidden"
+                        value="0.5"
+                    >
+                    Half Recipe
+                </label>
+
+                <label class="portion-btn active">
+                    <input
+                        type="radio"
+                        id="inlineRadio2"
+                        name="inlineRadioOptions"
+                        class="recipe-portion-form-check-input hidden"
+                        value="1"
+                        checked
+                    >
+                    Normal
+                </label>
+
+                <label class="portion-btn">
+                    <input
+                        type="radio"
+                        id="inlineRadio3"
+                        name="inlineRadioOptions"
+                        class="recipe-portion-form-check-input hidden"
+                        value="2"
+                    >
+                    Double
+                </label>
+            </div>
+        </div>
+
+        {# Side-by-side layout for Ingredients and Steps on tablet/desktop #}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {# Expandable Ingredients Section #}
+            <div class="mb-6 md:mb-0">
+                <button
+                    class="w-full flex items-center justify-between p-4 bg-[color:var(--surface)] hover:bg-[color:var(--surface-hover)] rounded-lg transition-colors cursor-pointer expandable-toggle"
+                    aria-expanded="true"
+                >
+                    <h2 class="text-xl font-bold page-title">Ingredients</h2>
+                    <i class="fas fa-chevron-down text-[color:var(--text-muted)] chevron-icon transition-transform rotate-180" aria-hidden="true"></i>
+                </button>
+                <div class="mt-4 px-4">
+                    <ul class="space-y-3" id="ingredient-list">
+                        {% for ingredient in recipe.recipe_ingredients %}
+                            <li
+                                class="text-lg text-[color:var(--text-secondary)] leading-relaxed"
+                                data-original-quantity="{{ ingredient['ingredient_quantity'] }}"
+                                data-measurement="{{ ingredient['ingredient_measurement'] }}"
+                                data-name="{{ ingredient['ingredient_name'] }}"
+                            >
+                                <i class="fa-solid fa-circle text-xs text-[color:var(--accent-coral)] mr-2" aria-hidden="true"></i>
+                                <span class="ingredient-quantity">{{ ingredient["ingredient_quantity"] }}</span>
+                                <span class="ingredient-measurement">{{ ingredient["ingredient_measurement"] }}</span>
+                                <span class="ingredient-name">{{ ingredient["ingredient_name"] }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            {# Expandable Steps Section #}
+            <div class="mb-8 md:mb-0">
+                <button
+                    class="w-full flex items-center justify-between p-4 bg-[color:var(--surface)] hover:bg-[color:var(--surface-hover)] rounded-lg transition-colors cursor-pointer expandable-toggle"
+                    aria-expanded="true"
+                >
+                    <h2 class="text-xl font-bold page-title">Steps</h2>
+                    <i class="fas fa-chevron-down text-[color:var(--text-muted)] chevron-icon transition-transform rotate-180" aria-hidden="true"></i>
+                </button>
+                <div class="mt-4 px-4">
+                    <ol class="space-y-6">
+                        {% for step in recipe.recipe_steps %}
+                            <li class="flex gap-4">
+                                <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-[color:var(--accent-coral)] text-white rounded-full font-semibold">
+                                    {{ loop.index }}
+                                </div>
+                                <p class="flex-1 text-lg text-[color:var(--text-secondary)] leading-relaxed pt-1">
+                                    {{ step["step_text"].strip() }}
+                                </p>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block modals %}
+{# Delete Confirmation Modal #}
+{{ modal.confirm_modal(
+    'confirmDeleteModal',
+    'Delete Recipe?',
+    'Are you sure you want to delete this recipe? This action cannot be undone.',
+    confirm_btn_id='confirm-delete-btn',
+    confirm_text='Delete',
+    cancel_text='Cancel',
+    variant='danger'
+) }}
+
+{# Share Recipe Modal #}
+{% if g.user %}
+<div class="modal"
+     id="shareRecipeModal"
+     tabindex="-1"
+     role="dialog"
+     aria-labelledby="shareRecipeModal-title"
+     aria-hidden="true"
+     data-recipe-name="{{ recipe.recipe_name|e }}"
+     data-recipe-description="{{ recipe.recipe_description|e if recipe.recipe_description else '' }}"
+     data-recipe-ingredients='{{ recipe.recipe_ingredients|tojson|safe }}'
+     data-recipe-steps='{{ recipe.recipe_steps|tojson|safe }}'
+     data-sender-name="{{ g.user.user_name|e }}"
+     data-jwt="{{ session.get('user_jwt', '') }}">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="shareRecipeModal-title">
+                    <i class="fa-solid fa-share-nodes mr-2 text-[#ff6b6b]"></i>
+                    Share Recipe
+                </h2>
+            </div>
+            <div class="modal-body">
+                <p class="text-sm text-gray-400 mb-4">Enter the email address to share this recipe:</p>
+                <div class="mb-4">
+                    <label for="share-email-input" class="form-label">Email Address</label>
+                    <input
+                        type="email"
+                        class="form-control"
+                        id="share-email-input"
+                        placeholder="recipient@example.com"
+                        autocomplete="email"
+                        required
+                    >
+                    <div id="share-email-error" class="text-red-500 text-sm mt-1 hidden"></div>
+                </div>
+            </div>
+            <div class="modal-footer justify-between">
+                <button type="button" class="btn btn-secondary close-modal">
+                    <i class="fa-solid fa-times mr-2"></i>Cancel
+                </button>
+                <button id="share-send-btn" class="btn btn-success" disabled>
+                    <i class="fa-solid fa-paper-plane mr-2"></i>Send
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock modals %}

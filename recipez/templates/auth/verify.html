@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Verification Code Entry - Clean centered design #}
+<div class="min-h-screen bg-background flex items-center justify-center px-6 py-8">
+    <div class="w-full max-w-xl px-4">
+        {# Flash Messages #}
+        {% if get_flashed_messages() %}
+            <div class="mb-6">
+                {% include "message.html" %}
+            </div>
+        {% endif %}
+
+        {# Verification Card #}
+        <div class="card p-8">
+            {# Header #}
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold page-title mb-2">Verify Your Email</h1>
+                <p class="text-[color:var(--text-secondary)]">Enter the 8-digit code sent to</p>
+                <p class="text-[#ff6b6b] font-medium mt-1">{{ email }}</p>
+            </div>
+
+            {# Form #}
+            <form method="POST" action="/auth/login/verify" class="space-y-6">
+                {{ form.csrf_token }}
+                {{ form.email(value=email, class="hidden") }}
+                {{ form.code_hidden(id="complete-code", class="hidden") }}
+
+                {# Verification Code Input - CRITICAL: Preserve IDs for verify.js #}
+                <div class="form-group">
+                    <label class="form-label text-center block mb-4">Verification Code</label>
+                    <div class="otp-container">
+                        {{ form.code1(class="otp-input", maxlength="1", autocomplete="off", id="code1") }}
+                        {{ form.code2(class="otp-input", maxlength="1", autocomplete="off", id="code2") }}
+                        {{ form.code3(class="otp-input", maxlength="1", autocomplete="off", id="code3") }}
+                        {{ form.code4(class="otp-input", maxlength="1", autocomplete="off", id="code4") }}
+                        <span class="text-xl font-bold text-[color:var(--text-muted)] mx-0.5 sm:mx-1">-</span>
+                        {{ form.code5(class="otp-input", maxlength="1", autocomplete="off", id="code5") }}
+                        {{ form.code6(class="otp-input", maxlength="1", autocomplete="off", id="code6") }}
+                        {{ form.code7(class="otp-input", maxlength="1", autocomplete="off", id="code7") }}
+                        {{ form.code8(class="otp-input", maxlength="1", autocomplete="off", id="code8") }}
+                    </div>
+                </div>
+
+                {# Action Buttons #}
+                <div class="flex gap-3">
+                    <a href="{{ url_for('auth.login_email_view') }}" class="btn btn-secondary flex-1">
+                        <i class="fa-solid fa-arrow-left mr-2"></i>
+                        Back
+                    </a>
+                    {{ form.submit(class="btn btn-coral flex-1") }}
+                </div>
+            </form>
+        </div>
+
+        {# Resend Code Link #}
+        <div class="text-center mt-6">
+            <p class="text-sm text-[color:var(--text-secondary)]">
+                Didn't receive a code?
+                <a href="{{ url_for('auth.login_email_view') }}" class="text-primary-600 hover:text-primary-700 font-medium">
+                    Resend Code
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock content %}

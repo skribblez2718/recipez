@@ -1,0 +1,2633 @@
+openapi: 3.0.3
+info:
+  title: Recipez API
+  description: |
+    REST API for the Recipez recipe management application.
+
+    ## Authentication
+    Most endpoints require JWT Bearer token authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your-jwt-token>
+    ```
+
+    ## Authorization Scopes
+    Endpoints require specific scopes in the JWT token. Regular users have scopes prefixed with resource types
+    (e.g., `recipe:create`, `category:read`). System user (yeschef) has additional administrative scopes.
+
+    ## System User APIs
+    Endpoints marked with `[System User]` are restricted to the system user (yeschef) and are used for
+    authentication flows and user management. These require system-level scopes.
+  version: 1.0.0
+  contact:
+    name: Recipez Support
+  license:
+    name: Proprietary
+
+servers:
+  - url: /
+    description: Current server
+
+tags:
+  - name: Health
+    description: Health check endpoints for monitoring and orchestration
+  - name: Profile
+    description: User profile management endpoints
+  - name: Recipe
+    description: Recipe CRUD operations
+  - name: Category
+    description: Recipe category management
+  - name: Ingredient
+    description: Recipe ingredient management
+  - name: Step
+    description: Recipe step/instruction management
+  - name: Image
+    description: Image upload and management
+  - name: AI
+    description: AI-powered recipe generation and speech-to-text
+  - name: Grocery
+    description: AI-organized grocery list generation
+  - name: Email
+    description: Email sending endpoints
+  - name: Code
+    description: Verification code management (System User)
+  - name: User
+    description: User management (System User)
+
+paths:
+  # ==================== HEALTH ENDPOINTS ====================
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Basic health check
+      description: Returns application and database health status. Used by Docker and orchestration systems.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Application is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Application or database is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /health/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      description: |
+        Verifies application is ready to receive traffic. More comprehensive than basic health check.
+        Checks database connectivity and schema existence.
+      operationId: readinessCheck
+      responses:
+        '200':
+          description: Application is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+        '503':
+          description: Application is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+
+  # ==================== PROFILE ENDPOINTS ====================
+  /api/profile/me:
+    get:
+      tags:
+        - Profile
+      summary: Get current user profile
+      description: Returns the authenticated user's profile information.
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/profile/image:
+    put:
+      tags:
+        - Profile
+      summary: Update profile image
+      description: |
+        Update the current user's profile image URL.
+        Rate limited to 10 requests per minute.
+      operationId: updateProfileImage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileImageRequest'
+      responses:
+        '200':
+          description: Profile image updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          description: Rate limit exceeded (10 per minute)
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/profile/api-keys:
+    post:
+      tags:
+        - Profile
+      summary: Create managed API key
+      description: |
+        Create a new managed API key with specified scopes for the authenticated user.
+        The JWT token is only returned once at creation - it cannot be retrieved later.
+        Rate limited to 10 requests per hour.
+      operationId: createApiKey
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+      responses:
+        '201':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateApiKeyResponse'
+        '400':
+          description: Invalid request (missing name, no valid scopes, invalid expiration)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Rate limit exceeded (10 per hour)
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Profile
+      summary: List API keys
+      description: |
+        List all API keys for the authenticated user (metadata only, never the token).
+        Also returns the list of available scopes from configuration.
+      operationId: listApiKeys
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: API keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListApiKeysResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/profile/api-keys/{apiKeyId}:
+    delete:
+      tags:
+        - Profile
+      summary: Delete API key
+      description: |
+        Permanently delete an API key. This is a hard delete - the key is removed from the database
+        and cannot be recovered. Only the key owner can delete their keys.
+      operationId: deleteApiKey
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ApiKeyId'
+      responses:
+        '200':
+          description: API key deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid API key ID format
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: API key not found or not owned by user
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== RECIPE ENDPOINTS ====================
+  /api/recipe/create:
+    post:
+      tags:
+        - Recipe
+      summary: Create a new recipe
+      description: Create a new recipe. Requires `recipe:create` scope.
+      operationId: createRecipe
+      security:
+        - bearerAuth: [recipe:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRecipeRequest'
+      responses:
+        '200':
+          description: Recipe created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Recipe with this name already exists
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/recipe/all:
+    get:
+      tags:
+        - Recipe
+      summary: Get all recipes
+      description: |
+        Retrieve all recipes with nested category, image, author, ingredients, and steps.
+        Requires `recipe:read` scope.
+      operationId: getAllRecipes
+      security:
+        - bearerAuth: [recipe:read]
+      responses:
+        '200':
+          description: List of all recipes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipesListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/recipe/{recipeId}:
+    get:
+      tags:
+        - Recipe
+      summary: Get a single recipe
+      description: |
+        Retrieve a single recipe by ID with nested category, image, author, ingredients, and steps.
+        Requires `recipe:read` scope.
+      operationId: getRecipe
+      security:
+        - bearerAuth: [recipe:read]
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      responses:
+        '200':
+          description: Recipe retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/recipe/update/{recipeId}:
+    put:
+      tags:
+        - Recipe
+      summary: Update a recipe
+      description: |
+        Update an existing recipe. Requires `recipe:update` scope and recipe ownership.
+        Only the recipe author can update the recipe.
+      operationId: updateRecipe
+      security:
+        - bearerAuth: [recipe:update]
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecipeRequest'
+      responses:
+        '200':
+          description: Recipe updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: User is not the recipe author
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/recipe/delete/{recipeId}:
+    delete:
+      tags:
+        - Recipe
+      summary: Delete a recipe
+      description: |
+        Delete a recipe. Requires `recipe:delete` scope and recipe ownership.
+        Also cleans up associated image if not a default image.
+      operationId: deleteRecipe
+      security:
+        - bearerAuth: [recipe:delete]
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      responses:
+        '200':
+          description: Recipe deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid recipe ID
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: User is not the recipe author
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/recipe/batch-update-category:
+    post:
+      tags:
+        - Recipe
+      summary: Batch update recipe categories
+      description: |
+        Update categories for multiple recipes at once. Requires `recipe:update` scope.
+        Only updates recipes owned by the current user.
+      operationId: batchUpdateRecipeCategories
+      security:
+        - bearerAuth: [recipe:update]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateCategoryRequest'
+      responses:
+        '200':
+          description: Batch update completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateCategoryResponse'
+        '400':
+          description: No updates provided
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== CATEGORY ENDPOINTS ====================
+  /api/category/create:
+    post:
+      tags:
+        - Category
+      summary: Create a new category
+      description: Create a new recipe category. Requires `category:create` scope.
+      operationId: createCategory
+      security:
+        - bearerAuth: [category:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        '200':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Category with this name already exists
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/category/{categoryId}:
+    get:
+      tags:
+        - Category
+      summary: Get a single category
+      description: Retrieve a category by ID. Requires `category:read` scope.
+      operationId: getCategory
+      security:
+        - bearerAuth: [category:read]
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      responses:
+        '200':
+          description: Category retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Invalid category ID
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Category not found (returns empty category object)
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/category/all:
+    get:
+      tags:
+        - Category
+      summary: Get all categories
+      description: Retrieve all categories. Requires `category:read` scope.
+      operationId: getAllCategories
+      security:
+        - bearerAuth: [category:read]
+      responses:
+        '200':
+          description: List of all categories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoriesListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/category/update/{categoryId}:
+    put:
+      tags:
+        - Category
+      summary: Update a category
+      description: |
+        Update a category name. Requires `category:update` scope and category ownership.
+      operationId: updateCategory
+      security:
+        - bearerAuth: [category:update]
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+      responses:
+        '200':
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryUpdateResponse'
+        '400':
+          description: Invalid category name or ID
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/category/delete/{categoryId}/preview:
+    get:
+      tags:
+        - Category
+      summary: Preview category deletion
+      description: |
+        Preview what would happen if a category is deleted. Shows affected recipes and
+        whether the user can delete the category. Requires `category:delete` scope.
+      operationId: previewCategoryDeletion
+      security:
+        - bearerAuth: [category:delete]
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      responses:
+        '200':
+          description: Deletion preview information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryDeletePreviewResponse'
+        '400':
+          description: Invalid category ID
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/category/delete/{categoryId}:
+    delete:
+      tags:
+        - Category
+      summary: Delete a category
+      description: |
+        Delete a category. Requires `category:delete` scope and category ownership.
+        User's recipes using this category will be reassigned to 'Uncategorized'.
+        Cannot delete if other users' recipes use this category.
+      operationId: deleteCategory
+      security:
+        - bearerAuth: [category:delete]
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      responses:
+        '200':
+          description: Category deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryDeleteResponse'
+        '400':
+          description: Cannot delete category (other users' recipes use it)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== INGREDIENT ENDPOINTS ====================
+  /api/ingredient/create:
+    post:
+      tags:
+        - Ingredient
+      summary: Batch create ingredients
+      description: |
+        Create multiple ingredients for a recipe at once. Requires `ingredient:create` scope.
+      operationId: createIngredients
+      security:
+        - bearerAuth: [ingredient:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIngredientsRequest'
+      responses:
+        '200':
+          description: Ingredients created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngredientsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/ingredient/{ingredientId}:
+    get:
+      tags:
+        - Ingredient
+      summary: Get a single ingredient
+      description: Retrieve an ingredient by ID. Requires `ingredient:read` scope.
+      operationId: getIngredient
+      security:
+        - bearerAuth: [ingredient:read]
+      parameters:
+        - $ref: '#/components/parameters/IngredientId'
+      responses:
+        '200':
+          description: Ingredient retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngredientResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/ingredient/update/{ingredientId}:
+    put:
+      tags:
+        - Ingredient
+      summary: Update an ingredient
+      description: Update an ingredient's details. Requires `ingredient:update` scope.
+      operationId: updateIngredient
+      security:
+        - bearerAuth: [ingredient:update]
+      parameters:
+        - $ref: '#/components/parameters/IngredientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIngredientRequest'
+      responses:
+        '200':
+          description: Ingredient updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/ingredient/delete/{ingredientId}:
+    delete:
+      tags:
+        - Ingredient
+      summary: Delete an ingredient
+      description: Delete an ingredient. Requires `ingredient:delete` scope.
+      operationId: deleteIngredient
+      security:
+        - bearerAuth: [ingredient:delete]
+      parameters:
+        - $ref: '#/components/parameters/IngredientId'
+      responses:
+        '200':
+          description: Ingredient deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== STEP ENDPOINTS ====================
+  /api/step/create:
+    post:
+      tags:
+        - Step
+      summary: Batch create steps
+      description: Create multiple steps for a recipe at once. Requires `step:create` scope.
+      operationId: createSteps
+      security:
+        - bearerAuth: [step:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStepsRequest'
+      responses:
+        '200':
+          description: Steps created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/step/{recipeId}:
+    get:
+      tags:
+        - Step
+      summary: Get steps by recipe ID
+      description: |
+        Retrieve all steps for a recipe. The path parameter is the recipe ID, not step ID.
+        Requires `step:read` scope.
+      operationId: getStepsByRecipe
+      security:
+        - bearerAuth: [step:read]
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          description: Recipe UUID to get steps for
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Steps retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepsListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No steps found (returns empty step array)
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/step/update/{stepId}:
+    put:
+      tags:
+        - Step
+      summary: Update a step
+      description: Update a step's description. Requires `step:update` scope.
+      operationId: updateStep
+      security:
+        - bearerAuth: [step:update]
+      parameters:
+        - $ref: '#/components/parameters/StepId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStepRequest'
+      responses:
+        '200':
+          description: Step updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/step/delete/{stepId}:
+    delete:
+      tags:
+        - Step
+      summary: Delete a step
+      description: Delete a step. Requires `step:delete` scope.
+      operationId: deleteStep
+      security:
+        - bearerAuth: [step:delete]
+      parameters:
+        - $ref: '#/components/parameters/StepId'
+      responses:
+        '200':
+          description: Step deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== IMAGE ENDPOINTS ====================
+  /api/image/create:
+    post:
+      tags:
+        - Image
+      summary: Upload an image
+      description: |
+        Upload a base64-encoded image. Requires `image:create` scope.
+        Image is saved to the uploads directory and a database record is created.
+      operationId: createImage
+      security:
+        - bearerAuth: [image:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateImageRequest'
+      responses:
+        '200':
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/image/delete/{imageId}:
+    delete:
+      tags:
+        - Image
+      summary: Delete an image
+      description: |
+        Delete an image. Requires `image:delete` scope.
+        Default system images are protected and cannot be deleted.
+      operationId: deleteImage
+      security:
+        - bearerAuth: [image:delete]
+      parameters:
+        - $ref: '#/components/parameters/ImageId'
+      responses:
+        '200':
+          description: Image deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== AI ENDPOINTS ====================
+  /api/ai/create:
+    post:
+      tags:
+        - AI
+      summary: AI-generate a recipe
+      description: |
+        Generate a recipe using AI based on a text prompt.
+        Requires `ai:create-recipe` scope.
+        Only ASCII characters are allowed in the message.
+      operationId: aiCreateRecipe
+      security:
+        - bearerAuth: [ai:create-recipe]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AICreateRecipeRequest'
+      responses:
+        '200':
+          description: Recipe generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIRecipeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          description: AI service error or empty response
+        '504':
+          description: AI service timeout
+
+  /api/ai/modify:
+    post:
+      tags:
+        - AI
+      summary: AI-modify a recipe
+      description: |
+        Modify an existing recipe using AI based on instructions.
+        Requires `ai:modify-recipe` scope.
+        Only ASCII characters are allowed in the message.
+      operationId: aiModifyRecipe
+      security:
+        - bearerAuth: [ai:modify-recipe]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIModifyRecipeRequest'
+      responses:
+        '200':
+          description: Recipe modified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIRecipeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Recipe not found
+        '500':
+          description: AI service error or empty response
+        '504':
+          description: AI service timeout
+
+  /api/ai/stt:
+    post:
+      tags:
+        - AI
+      summary: Speech-to-text transcription
+      description: |
+        Transcribe audio to text using OpenAI Whisper.
+        Requires `ai:speech-to-text` scope.
+        Maximum file size: 25MB.
+        Supported formats: audio/mpeg, audio/mp3, audio/wav, audio/x-wav, audio/mp4, audio/x-m4a, audio/webm, audio/flac
+      operationId: aiSpeechToText
+      security:
+        - bearerAuth: [ai:speech-to-text]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - audio
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: Audio file to transcribe
+      responses:
+        '200':
+          description: Audio transcribed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AISTTResponse'
+        '400':
+          description: No audio file provided, unsupported format, or file too large
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== GROCERY ENDPOINTS ====================
+  /api/grocery/send:
+    post:
+      tags:
+        - Grocery
+      summary: Send AI-organized grocery list
+      description: |
+        Generate an AI-organized grocery list from selected recipes and email it to the user.
+        Consolidates ingredients, organizes by store department, and sends formatted email.
+        Requires `ai:grocery-list` scope.
+      operationId: sendGroceryList
+      security:
+        - bearerAuth: [ai:grocery-list]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrocerySendRequest'
+      responses:
+        '200':
+          description: Grocery list sent to email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: No recipes selected or recipes have no ingredients
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          description: AI service error or email send failure
+
+  # ==================== EMAIL ENDPOINTS ====================
+  /api/email/code:
+    post:
+      tags:
+        - Email
+      summary: Send verification code email
+      description: |
+        Send an email with a verification code. **[System User Only]**
+        Requires `email:code:create` scope (system user).
+      operationId: sendEmailCode
+      security:
+        - bearerAuth: [email:code:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailCodeRequest'
+      responses:
+        '200':
+          description: Verification code email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailSentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/email/invite:
+    post:
+      tags:
+        - Email
+      summary: Send invitation email
+      description: |
+        Send an invitation email to join Recipez.
+        Requires `email:invite:send` scope.
+      operationId: sendEmailInvite
+      security:
+        - bearerAuth: [email:invite:send]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailInviteRequest'
+      responses:
+        '200':
+          description: Invitation email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailSentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/email/recipe-share:
+    post:
+      tags:
+        - Email
+      summary: Send recipe link email
+      description: |
+        Send an email sharing a link to a recipe.
+        Requires `email:recipe:share` scope.
+      operationId: sendRecipeShareLink
+      security:
+        - bearerAuth: [email:recipe:share]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRecipeShareRequest'
+      responses:
+        '200':
+          description: Recipe sharing email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailSentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/email/recipe-share-full:
+    post:
+      tags:
+        - Email
+      summary: Send full recipe content email
+      description: |
+        Send an email with the complete recipe content (ingredients, steps).
+        Requires `email:recipe:share` scope.
+      operationId: sendRecipeShareFull
+      security:
+        - bearerAuth: [email:recipe:share]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRecipeShareFullRequest'
+      responses:
+        '200':
+          description: Full recipe email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailSentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== CODE ENDPOINTS (SYSTEM USER) ====================
+  /api/code/create:
+    post:
+      tags:
+        - Code
+      summary: Create verification code
+      description: |
+        Create a new verification code for authentication. **[System User Only]**
+        Code expires in 5 minutes. Maximum 3 sends per 15-minute window.
+        Requires `code:create` scope (system user).
+      operationId: createCode
+      security:
+        - bearerAuth: [code:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCodeRequest'
+      responses:
+        '200':
+          description: Code created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/code/read:
+    post:
+      tags:
+        - Code
+      summary: Read verification code
+      description: |
+        Retrieve verification code details. **[System User Only]**
+        Requires `code:read` scope (system user).
+      operationId: readCode
+      security:
+        - bearerAuth: [code:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadCodeRequest'
+      responses:
+        '200':
+          description: Code retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeReadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Code does not exist
+
+  /api/code/update:
+    post:
+      tags:
+        - Code
+      summary: Update verification code
+      description: |
+        Update verification code properties (count, attempts, cooldown). **[System User Only]**
+        Implements rate limiting and cooldown periods.
+        Requires `code:update` scope (system user).
+      operationId: updateCode
+      security:
+        - bearerAuth: [code:update]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCodeRequest'
+      responses:
+        '200':
+          description: Code updated or rate limit message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          description: Too many codes sent, cooldown active
+
+  /api/code/verify:
+    post:
+      tags:
+        - Code
+      summary: Verify code
+      description: |
+        Verify a user-submitted verification code. **[System User Only]**
+        Maximum 3 attempts per code. Triggers cooldown on failures.
+        Requires `code:verify` scope (system user).
+      operationId: verifyCode
+      security:
+        - bearerAuth: [code:verify]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyCodeRequest'
+      responses:
+        '200':
+          description: Code verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid code, expired, or too many attempts
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          description: Too many incorrect attempts, cooldown active
+
+  /api/code/delete:
+    post:
+      tags:
+        - Code
+      summary: Delete verification code
+      description: |
+        Delete a verification code. **[System User Only]**
+        Requires `code:delete` scope (system user).
+      operationId: deleteCode
+      security:
+        - bearerAuth: [code:delete]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteCodeRequest'
+      responses:
+        '200':
+          description: Code deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ==================== USER ENDPOINTS (SYSTEM USER) ====================
+  /api/user/create:
+    post:
+      tags:
+        - User
+      summary: Create a new user
+      description: |
+        Create a new user account from an email address. **[System User Only]**
+        Email is encrypted before storage. Username derived from email prefix.
+        Requires `user:create` scope (system user).
+      operationId: createUser
+      security:
+        - bearerAuth: [user:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: User with this email already exists
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/user/read/email:
+    post:
+      tags:
+        - User
+      summary: Read user by email
+      description: |
+        Lookup a user by their email address. **[System User Only]**
+        Uses HMAC for secure email lookup.
+        Requires `user:read` scope (system user).
+      operationId: readUserByEmail
+      security:
+        - bearerAuth: [user:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadUserByEmailRequest'
+      responses:
+        '200':
+          description: User found or not found
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/UserResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token with scopes. Include in Authorization header as: `Bearer <token>`
+
+        Token contains:
+        - `sub`: User subject ID
+        - `scope`: Space-separated list of permission scopes
+        - `iat`: Issued at timestamp
+        - `exp`: Expiration time (12 hours from issue)
+        - `iss`: Token issuer
+        - `aud`: Token audience
+
+  parameters:
+    RecipeId:
+      name: recipeId
+      in: path
+      required: true
+      description: Recipe UUID
+      schema:
+        type: string
+        format: uuid
+
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      description: Category UUID
+      schema:
+        type: string
+        format: uuid
+
+    IngredientId:
+      name: ingredientId
+      in: path
+      required: true
+      description: Ingredient UUID
+      schema:
+        type: string
+        format: uuid
+
+    StepId:
+      name: stepId
+      in: path
+      required: true
+      description: Step UUID
+      schema:
+        type: string
+        format: uuid
+
+    ImageId:
+      name: imageId
+      in: path
+      required: true
+      description: Image UUID
+      schema:
+        type: string
+        format: uuid
+
+    ApiKeyId:
+      name: apiKeyId
+      in: path
+      required: true
+      description: API Key UUID
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: Forbidden - insufficient permissions or scope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    # ==================== COMMON SCHEMAS ====================
+    ErrorResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            error:
+              type: string
+              description: Error message
+
+    SuccessResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+
+    MessageResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            message:
+              type: string
+
+    # ==================== HEALTH SCHEMAS ====================
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        checks:
+          type: object
+          properties:
+            app:
+              type: string
+              enum: [ok, error]
+            database:
+              type: string
+              enum: [ok, error, unknown]
+
+    ReadinessResponse:
+      type: object
+      properties:
+        ready:
+          type: boolean
+        checks:
+          type: object
+          properties:
+            database:
+              type: string
+            schema:
+              type: string
+
+    # ==================== USER SCHEMAS ====================
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        user_sub:
+          type: string
+          format: uuid
+          description: Subject ID used in JWT
+        user_email:
+          type: string
+          description: Encrypted email address
+        user_name:
+          type: string
+        user_created_at:
+          type: string
+          format: date-time
+          nullable: true
+        user_profile_image_url:
+          type: string
+          nullable: true
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+
+    ReadUserByEmailRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+
+    UserResponse:
+      type: object
+      properties:
+        response:
+          $ref: '#/components/schemas/User'
+
+    # ==================== PROFILE SCHEMAS ====================
+    ProfileResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            user_id:
+              type: string
+              format: uuid
+            user_name:
+              type: string
+            user_email:
+              type: string
+            profile_image_url:
+              type: string
+
+    UpdateProfileImageRequest:
+      type: object
+      required:
+        - image_url
+      properties:
+        image_url:
+          type: string
+          description: URL to the new profile image
+
+    CreateApiKeyRequest:
+      type: object
+      required:
+        - name
+        - scopes
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: User-provided name for the API key
+        scopes:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Permission scopes for the API key
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Expiration timestamp (ISO 8601 format)
+        never_expires:
+          type: boolean
+          default: false
+          description: Set to true for keys that never expire
+
+    ApiKeyMetadata:
+      type: object
+      description: API key metadata (never includes the actual token)
+      properties:
+        api_key_id:
+          type: string
+          format: uuid
+        api_key_name:
+          type: string
+        api_key_scopes:
+          type: array
+          items:
+            type: string
+        api_key_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        api_key_created_at:
+          type: string
+          format: date-time
+        is_expired:
+          type: boolean
+          description: Computed field indicating if the key has expired
+
+    CreateApiKeyResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            api_key:
+              $ref: '#/components/schemas/ApiKeyMetadata'
+            token:
+              type: string
+              description: JWT token - only shown once at creation, cannot be retrieved later
+            warning:
+              type: string
+              example: "Save this token now. It cannot be retrieved later."
+
+    ListApiKeysResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            api_keys:
+              type: array
+              items:
+                $ref: '#/components/schemas/ApiKeyMetadata'
+            available_scopes:
+              type: array
+              items:
+                type: string
+              description: All available scopes that can be assigned to API keys
+
+    # ==================== RECIPE SCHEMAS ====================
+    Recipe:
+      type: object
+      properties:
+        recipe_id:
+          type: string
+          format: uuid
+        recipe_name:
+          type: string
+        recipe_description:
+          type: string
+        recipe_category_id:
+          type: string
+          format: uuid
+        recipe_image_id:
+          type: string
+          format: uuid
+          nullable: true
+        recipe_author_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    RecipeWithRelations:
+      allOf:
+        - $ref: '#/components/schemas/Recipe'
+        - type: object
+          properties:
+            recipe_category:
+              $ref: '#/components/schemas/Category'
+            recipe_image:
+              $ref: '#/components/schemas/Image'
+            recipe_author:
+              $ref: '#/components/schemas/User'
+            author:
+              $ref: '#/components/schemas/User'
+              description: Alias for recipe_author
+            recipe_ingredients:
+              type: array
+              items:
+                $ref: '#/components/schemas/Ingredient'
+            recipe_steps:
+              type: array
+              items:
+                $ref: '#/components/schemas/Step'
+
+    CreateRecipeRequest:
+      type: object
+      required:
+        - recipe_name
+        - recipe_description
+        - recipe_category_id
+        - recipe_image_id
+        - recipe_author_id
+      properties:
+        recipe_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          pattern: "^[0-9a-zA-Z-_()., '&]+$"
+        recipe_description:
+          type: string
+          minLength: 2
+          maxLength: 500
+        recipe_category_id:
+          type: string
+          format: uuid
+        recipe_image_id:
+          type: string
+          format: uuid
+        recipe_author_id:
+          type: string
+          format: uuid
+
+    UpdateRecipeRequest:
+      type: object
+      properties:
+        recipe_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          pattern: "^[0-9a-zA-Z-_()., '&]+$"
+          nullable: true
+        recipe_description:
+          type: string
+          minLength: 2
+          maxLength: 500
+          nullable: true
+        recipe_category_id:
+          type: string
+          format: uuid
+          nullable: true
+        recipe_image_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    RecipeResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            recipe:
+              $ref: '#/components/schemas/Recipe'
+
+    RecipeDetailResponse:
+      type: object
+      properties:
+        response:
+          $ref: '#/components/schemas/RecipeWithRelations'
+
+    RecipesListResponse:
+      type: object
+      properties:
+        response:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeWithRelations'
+
+    BatchUpdateCategoryRequest:
+      type: object
+      required:
+        - updates
+      properties:
+        updates:
+          type: array
+          items:
+            type: object
+            required:
+              - recipe_id
+              - category_id
+            properties:
+              recipe_id:
+                type: string
+                format: uuid
+              category_id:
+                type: string
+                format: uuid
+
+    BatchUpdateCategoryResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            success:
+              type: boolean
+            updated_count:
+              type: integer
+            failed_count:
+              type: integer
+            updated:
+              type: array
+              items:
+                type: object
+                properties:
+                  recipe_id:
+                    type: string
+                    format: uuid
+                  recipe_name:
+                    type: string
+                  new_category_id:
+                    type: string
+                    format: uuid
+                  new_category_name:
+                    type: string
+            failed:
+              type: array
+              items:
+                type: object
+                properties:
+                  recipe_id:
+                    type: string
+                    format: uuid
+                  reason:
+                    type: string
+
+    # ==================== CATEGORY SCHEMAS ====================
+    Category:
+      type: object
+      properties:
+        category_id:
+          type: string
+          format: uuid
+        category_name:
+          type: string
+        category_author_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    CreateCategoryRequest:
+      type: object
+      required:
+        - category_name
+        - author_id
+      properties:
+        category_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          pattern: "^[a-zA-Z0-9-_' ]+$"
+        author_id:
+          type: string
+          format: uuid
+
+    UpdateCategoryRequest:
+      type: object
+      required:
+        - category_name
+      properties:
+        category_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          pattern: "^[a-zA-Z0-9-_' ]+$"
+
+    CategoryResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            category:
+              $ref: '#/components/schemas/Category'
+
+    CategoryUpdateResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            category:
+              $ref: '#/components/schemas/Category'
+            success:
+              type: string
+              example: Category updated successfully
+
+    CategoriesListResponse:
+      type: object
+      properties:
+        response:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+
+    CategoryDeletePreviewResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            can_delete:
+              type: boolean
+            reason:
+              type: string
+            affected_recipes:
+              type: array
+              items:
+                type: object
+                properties:
+                  recipe_id:
+                    type: string
+                    format: uuid
+                  recipe_name:
+                    type: string
+            affected_count:
+              type: integer
+            message:
+              type: string
+
+    CategoryDeleteResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            success:
+              type: string
+              example: Category deleted successfully
+            recipes_reassigned:
+              type: integer
+            reassigned_to:
+              type: string
+              nullable: true
+
+    # ==================== INGREDIENT SCHEMAS ====================
+    MeasurementEnum:
+      type: string
+      enum:
+        - gram
+        - ounce
+        - pound
+        - kilogram
+        - teaspoon
+        - tablespoon
+        - fluid ounce
+        - cup
+        - pint
+        - quart
+        - gallon
+        - milliliter
+        - liter
+        - tsp
+        - Tbsp
+        - pinch
+        - dash
+        - dollop
+        - handful
+        - clove
+        - sprig
+        - piece
+        - slice
+        - whole
+      description: |
+        Allowed measurement units:
+        - Weight: gram, ounce, pound, kilogram
+        - Volume: teaspoon, tablespoon, fluid ounce, cup, pint, quart, gallon, milliliter, liter
+        - Abbreviations: tsp, Tbsp
+        - Approximate: pinch, dash, dollop, handful
+        - Item-based: clove, sprig, piece, slice, whole
+
+    Ingredient:
+      type: object
+      properties:
+        ingredient_id:
+          type: string
+          format: uuid
+        ingredient_name:
+          type: string
+        ingredient_quantity:
+          type: string
+        ingredient_measurement:
+          type: string
+        ingredient_author_id:
+          type: string
+          format: uuid
+        ingredient_recipe_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    IngredientInput:
+      type: object
+      required:
+        - ingredient_name
+        - ingredient_quantity
+        - ingredient_measurement
+      properties:
+        ingredient_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          pattern: "^[a-zA-Z0-9\\s()\\-°]+$"
+        ingredient_quantity:
+          type: string
+          pattern: "^(\\d+(\\.\\d+)?|\\d+/\\d+)(\\s*-\\s*(\\d+(\\.\\d+)?|\\d+/\\d+))?$"
+          description: "Numeric quantity (e.g., '1', '1.5', '1/2', '1-2')"
+        ingredient_measurement:
+          $ref: '#/components/schemas/MeasurementEnum'
+
+    CreateIngredientsRequest:
+      type: object
+      required:
+        - recipe_id
+        - author_id
+        - ingredients
+      properties:
+        recipe_id:
+          type: string
+          format: uuid
+        author_id:
+          type: string
+          format: uuid
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngredientInput'
+
+    UpdateIngredientRequest:
+      type: object
+      required:
+        - ingredient_name
+        - ingredient_quantity
+        - ingredient_measurement
+      properties:
+        ingredient_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          pattern: "^[a-zA-Z0-9\\s()\\-°]+$"
+        ingredient_quantity:
+          type: string
+          pattern: "^(\\d+(\\.\\d+)?|\\d+/\\d+)(\\s*-\\s*(\\d+(\\.\\d+)?|\\d+/\\d+))?$"
+        ingredient_measurement:
+          $ref: '#/components/schemas/MeasurementEnum'
+
+    IngredientResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            ingredient:
+              $ref: '#/components/schemas/Ingredient'
+
+    IngredientsResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            ingredients:
+              type: array
+              items:
+                $ref: '#/components/schemas/Ingredient'
+
+    # ==================== STEP SCHEMAS ====================
+    Step:
+      type: object
+      properties:
+        step_id:
+          type: string
+          format: uuid
+        step_text:
+          type: string
+        step_author_id:
+          type: string
+          format: uuid
+        step_recipe_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    StepInput:
+      type: object
+      required:
+        - step_description
+      properties:
+        step_description:
+          type: string
+          minLength: 2
+
+    CreateStepsRequest:
+      type: object
+      required:
+        - recipe_id
+        - author_id
+        - steps
+      properties:
+        recipe_id:
+          type: string
+          format: uuid
+        author_id:
+          type: string
+          format: uuid
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepInput'
+
+    UpdateStepRequest:
+      type: object
+      required:
+        - step_description
+      properties:
+        step_description:
+          type: string
+          minLength: 2
+
+    StepsResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            steps:
+              type: array
+              items:
+                $ref: '#/components/schemas/Step'
+
+    StepsListResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            steps:
+              type: array
+              items:
+                $ref: '#/components/schemas/Step'
+
+    # ==================== IMAGE SCHEMAS ====================
+    Image:
+      type: object
+      properties:
+        image_id:
+          type: string
+          format: uuid
+        image_url:
+          type: string
+        image_author_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    CreateImageRequest:
+      type: object
+      required:
+        - image_data
+        - image_path
+        - author_id
+      properties:
+        image_data:
+          type: string
+          format: byte
+          description: Base64-encoded image data
+        image_path:
+          type: string
+          description: File path where image will be stored
+        author_id:
+          type: string
+          format: uuid
+
+    ImageResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            image:
+              $ref: '#/components/schemas/Image'
+
+    # ==================== AI SCHEMAS ====================
+    AICreateRecipeRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 2
+          maxLength: 500
+          description: Recipe generation prompt (ASCII characters only)
+
+    AIModifyRecipeRequest:
+      type: object
+      required:
+        - message
+        - recipe_id
+      properties:
+        message:
+          type: string
+          minLength: 2
+          maxLength: 500
+          description: Modification instructions (ASCII characters only)
+        recipe_id:
+          type: string
+          format: uuid
+          description: ID of recipe to modify
+
+    AIRecipeResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            recipe:
+              type: string
+              description: AI-generated recipe content (markdown or JSON)
+
+    AISTTResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            transcription:
+              type: string
+              description: Transcribed text from audio
+
+    # ==================== GROCERY SCHEMAS ====================
+    GrocerySendRequest:
+      type: object
+      required:
+        - recipe_ids
+      properties:
+        recipe_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+          maxItems: 50
+          description: List of recipe UUIDs (1-50)
+
+    # ==================== EMAIL SCHEMAS ====================
+    EmailCodeRequest:
+      type: object
+      required:
+        - email
+        - code
+      properties:
+        email:
+          type: string
+          format: email
+        code:
+          type: string
+          pattern: "^[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}$"
+          description: Verification code in format XXXX-XXXX
+
+    EmailInviteRequest:
+      type: object
+      required:
+        - email
+        - invite_link
+        - sender_name
+      properties:
+        email:
+          type: string
+          format: email
+        invite_link:
+          type: string
+          format: uri
+        sender_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+
+    EmailRecipeShareRequest:
+      type: object
+      required:
+        - email
+        - recipe_name
+        - recipe_link
+        - sender_name
+      properties:
+        email:
+          type: string
+          format: email
+        recipe_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        recipe_link:
+          type: string
+          format: uri
+        sender_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+
+    EmailRecipeShareFullRequest:
+      type: object
+      required:
+        - email
+        - recipe_name
+        - recipe_ingredients
+        - recipe_steps
+        - sender_name
+      properties:
+        email:
+          type: string
+          format: email
+        recipe_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        recipe_description:
+          type: string
+          maxLength: 500
+          nullable: true
+        recipe_ingredients:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: string
+        recipe_steps:
+          type: array
+          items:
+            type: string
+        sender_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+
+    EmailSentResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            message:
+              type: string
+              example: Email sent successfully
+
+    # ==================== CODE SCHEMAS ====================
+    CreateCodeRequest:
+      type: object
+      required:
+        - email
+        - session_id
+      properties:
+        email:
+          type: string
+          format: email
+        session_id:
+          type: string
+          description: Session ID to associate with the code
+
+    CodeCreateResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            code:
+              type: string
+              pattern: "^[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}$"
+              description: Generated verification code
+
+    ReadCodeRequest:
+      type: object
+      required:
+        - email
+        - session_id
+      properties:
+        email:
+          type: string
+          format: email
+        session_id:
+          type: string
+
+    CodeData:
+      type: object
+      properties:
+        code_id:
+          type: string
+          format: uuid
+        code_count:
+          type: integer
+          description: Number of times code has been sent
+        code_value:
+          type: string
+          description: Hashed code value
+        code_issued_at:
+          type: string
+          format: date-time
+          nullable: true
+        code_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        code_attempts:
+          type: integer
+          description: Number of verification attempts
+        code_cooldown:
+          type: string
+          format: date-time
+          nullable: true
+          description: Cooldown expiration time if rate limited
+        code_email:
+          type: string
+        code_session_id:
+          type: string
+          format: uuid
+
+    CodeReadResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            code:
+              $ref: '#/components/schemas/CodeData'
+
+    UpdateCodeRequest:
+      type: object
+      required:
+        - email
+        - code
+      properties:
+        email:
+          type: string
+          format: email
+        code:
+          type: object
+          required:
+            - code_id
+            - code_count
+          properties:
+            code_id:
+              type: string
+              format: uuid
+            code_count:
+              type: integer
+            code_issued_at:
+              type: string
+              format: date-time
+              nullable: true
+            code_cooldown:
+              type: string
+              format: date-time
+              nullable: true
+
+    VerifyCodeRequest:
+      type: object
+      required:
+        - received_code
+        - code
+      properties:
+        received_code:
+          type: string
+          description: User-submitted verification code
+        code:
+          type: object
+          required:
+            - code_id
+            - code_value
+            - code_expires_at
+            - code_attempts
+          properties:
+            code_id:
+              type: string
+              format: uuid
+            code_value:
+              type: string
+              description: Hashed code to compare against
+            code_expires_at:
+              type: string
+              format: date-time
+            code_attempts:
+              type: integer
+            code_cooldown:
+              type: string
+              format: date-time
+              nullable: true
+
+    DeleteCodeRequest:
+      type: object
+      required:
+        - code_id
+      properties:
+        code_id:
+          type: string
+          format: uuid

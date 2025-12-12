@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <!-- favicon -->
+        <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon" nonce="{{ link_nonce }}">
+
+        <!-- include fontawesome -->
+        <link href="{{ url_for('static', filename='fontawesome/css/fontawesome.min.css') }}" rel="stylesheet" nonce="{{ link_nonce }}">
+        <link href="{{ url_for('static', filename='fontawesome/css/brands.min.css') }}" rel="stylesheet" nonce="{{ link_nonce }}">
+        <link href="{{ url_for('static', filename='fontawesome/css/solid.min.css') }}" rel="stylesheet" nonce="{{ link_nonce }}">
+
+        <!-- include Tailwind CSS -->
+        <link href="{{ url_for('static', filename='css/output.css') }}" rel="stylesheet" nonce="{{ link_nonce }}">
+
+        <!-- include custom css (legacy, will be migrated) -->
+        <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet" nonce="{{ link_nonce }}">
+
+        <title>recipez</title>
+    </head>
+    <body class="theme-dark">
+        {# Import component macros #}
+        {% import 'components/button.html' as btn %}
+        {% import 'components/input.html' as input %}
+        {% import 'components/card.html' as card %}
+        {% import 'components/modal.html' as modal %}
+        <div class="flex-container m-0 p-0">
+            {# Header - New design from ux.md #}
+            <header class="bg-surface border-b border-gray-200 shadow-sm">
+                <nav class="flex items-center justify-between h-16 px-6 max-w-7xl mx-auto">
+                    {# Home Icon (Left) #}
+                    <a href="/" class="text-2xl text-[color:var(--text)] hover:text-primary transition-colors" aria-label="Home">
+                        <i class="fa-solid fa-house"></i>
+                    </a>
+
+                    {# Theme Toggle (Center-Right) #}
+                    <div class="theme-toggle-container">
+                        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                            <i class="fa-solid fa-sun icon"></i>
+                            <i class="fa-solid fa-moon icon"></i>
+                            <span class="toggle-circle"></span>
+                        </button>
+                    </div>
+
+                    {# User Profile / Login (Right) #}
+                    <div class="flex items-center">
+                        {% if g.user %}
+                            <div class="dropdown relative">
+                                <button
+                                    class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                                    id="profileDropdown"
+                                    aria-expanded="false"
+                                    aria-haspopup="true"
+                                >
+                                    <img
+                                        src="{{ g.user.user_profile_image_url or '/static/img/default_user.png' }}"
+                                        class="w-8 h-8 rounded-full object-cover profile-image-md"
+                                        alt="{{ g.user.user_name }}'s profile"
+                                    >
+                                    <span class="text-sm font-medium">{{ g.user.user_name }}</span>
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </button>
+                                <ul
+                                    class="dropdown-menu absolute right-0 mt-2 w-48 bg-surface border border-gray-200 rounded-lg shadow-lg py-2 hidden"
+                                    aria-labelledby="profileDropdown"
+                                >
+                                    <li>
+                                        <a
+                                            href="/profile/"
+                                            class="dropdown-item flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
+                                        >
+                                            <i class="fa-solid fa-user"></i>
+                                            Profile
+                                        </a>
+                                    </li>
+                                    <li><hr class="border-gray-200 my-1"></li>
+                                    <li>
+                                        <a
+                                            href="/auth/logout"
+                                            class="dropdown-item flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
+                                        >
+                                            <i class="fa-solid fa-right-from-bracket"></i>
+                                            Logout
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        {% else %}
+                            <a href="/auth/login/email" class="btn btn-coral">
+                                <i class="fa-solid fa-right-to-bracket mr-2"></i>
+                                Login
+                            </a>
+                        {% endif %}
+                    </div>
+                </nav>
+            </header>
+            <main class="min-h-screen">
+                {# Flash Messages #}
+                {% if get_flashed_messages(category_filter=["success"]) and request.path == "/" %}
+                    <div class="flex justify-center w-full px-6 py-4">
+                        {% include "message.html" %}
+                    </div>
+                {% endif %}
+
+                {# Search Bar and Action Buttons (Index Page) #}
+                {% if js_modules.search %}
+                    {# Search and Actions Row #}
+                    <div id="search-bar" class="flex flex-wrap items-center justify-center gap-4 w-full mt-6 px-6">
+                        {# Search Bar - Pill style #}
+                        <div class="w-full max-w-md">
+                            {% include "search/search_bar.html" %}
+                        </div>
+                        {# Action Buttons - Coral pills #}
+                        {% if g.user %}
+                            <div class="flex gap-3">
+                                <a href="/category/create" class="btn btn-outline-coral btn-sm">
+                                    Create Category
+                                </a>
+                                <a href="/recipe/create" class="btn btn-coral btn-sm">
+                                    Create Recipe
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {# Main Content #}
+                {% block content %}{% endblock %}
+                {% if g.user %}
+                    {# AI Floating Action Button #}
+                    <div class="ai-fab" id="ai-fab">
+                        <button
+                            id="ai-assist-btn"
+                            class="ai-fab-button"
+                            aria-label="AI Assistant"
+                            aria-expanded="false"
+                            aria-controls="ai-fab-panel">
+                            <i class="fa-solid fa-robot"></i>
+                        </button>
+                        <div id="ai-fab-panel"
+                             class="ai-fab-panel"
+                             role="menu"
+                             aria-labelledby="ai-assist-btn"
+                             data-recipes='{{ recipes|tojson|safe if recipes is defined else "[]" }}'
+                             data-categories='{{ categories|tojson|safe if categories is defined else "[]" }}'>
+                            <div class="ai-fab-header">
+                                <h3>AI Assistant</h3>
+                                <button id="ai-fab-close" class="ai-fab-close" aria-label="Close">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <div class="ai-fab-body">
+                                <!-- Voice Input Section will be dynamically added here by JavaScript -->
+                                <div id="chat-options" class="ai-chat-section">
+                                    <p class="text-sm text-gray-400 mb-4">What would you like to do?</p>
+                                    <button id="create-recipe-btn" class="btn btn-coral w-full mb-3" role="menuitem">
+                                        <i class="fa-solid fa-plus mr-2"></i>Create a New Recipe
+                                    </button>
+                                    <button id="modify-recipe-btn" class="btn btn-outline-coral w-full" role="menuitem">
+                                        <i class="fa-solid fa-edit mr-2"></i>Modify an Existing Recipe
+                                    </button>
+                                </div>
+                                <div id="create-recipe-options" class="ai-chat-section hidden">
+                                    <p class="text-sm text-gray-400 mb-3">Describe your recipe</p>
+                                    <form id="ai-create-form" method="POST" action="{{ url_for('ai.ai_create_recipe') }}">
+                                        {{ ai_create_form.csrf_token }}
+                                        {{ ai_create_form.message(
+                                            id='create-text',
+                                            class='form-control mb-3',
+                                            placeholder='Describe the recipe you want to create...',
+                                            rows=3
+                                        ) }}
+                                        {% if ai_create_form.message.errors %}
+                                            <div class="invalid-feedback block">
+                                                {% for error in ai_create_form.message.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <div class="flex gap-2">
+                                            <button type="button" id="back-to-options-create" class="btn btn-outline-secondary btn-sm">
+                                                <i class="fa-solid fa-arrow-left mr-1"></i>Back
+                                            </button>
+                                            <button type="button" id="send-create-btn" class="btn btn-coral btn-sm flex-1">
+                                                <i class="fa-solid fa-paper-plane mr-1"></i>Send
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div id="modify-recipe-options" class="ai-chat-section hidden">
+                                    <p class="text-sm text-gray-400 mb-3">Modify a recipe</p>
+                                    <form id="ai-modify-form" method="POST" action="{{ url_for('ai.ai_modify_recipe') }}">
+                                        {{ ai_modify_form.csrf_token }}
+
+                                        <div class="mb-3">
+                                            <label for="recipe-dropdown" class="form-label text-sm">Select a recipe:</label>
+                                            <select id="recipe-dropdown" class="form-select">
+                                                <option value="" disabled selected>Select a recipe</option>
+                                            </select>
+                                        </div>
+
+                                        {{ ai_modify_form.recipe_id(id='selected-recipe-id') }}
+                                        {{ ai_modify_form.message(
+                                            id='modification-text',
+                                            class='form-control mb-3',
+                                            placeholder='Describe your modifications...',
+                                            rows=3
+                                        ) }}
+
+                                        {% if ai_modify_form.recipe_id.errors %}
+                                            <div class="invalid-feedback block">
+                                                {% for error in ai_modify_form.recipe_id.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if ai_modify_form.message.errors %}
+                                            <div class="invalid-feedback block">
+                                                {% for error in ai_modify_form.message.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+
+                                        <div class="flex gap-2">
+                                            <button type="button" id="back-to-options-modify" class="btn btn-outline-secondary btn-sm">
+                                                <i class="fa-solid fa-arrow-left mr-1"></i>Back
+                                            </button>
+                                            <button type="button" id="send-request-btn" class="btn btn-coral btn-sm flex-1">
+                                                <i class="fa-solid fa-paper-plane mr-1"></i>Send
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div id="ai-result" class="ai-chat-section hidden">
+                                    <p class="text-sm text-gray-400 mb-3">AI Generated Recipe</p>
+                                    <pre id="ai-recipe-content" class="ai-recipe-preview mb-3 text-sm"></pre>
+                                    <div class="flex gap-2">
+                                        <button id="ai-try-again-btn" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fa-solid fa-redo mr-1"></i>Try Again
+                                        </button>
+                                        <button id="ai-save-btn" class="btn btn-coral btn-sm flex-1">
+                                            <i class="fa-solid fa-save mr-1"></i>Create Recipe
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </main>
+        </div>
+        <footer>
+            
+        </footer>
+
+        {% block modals %}{% endblock %}
+
+        {% if g.user %}
+            <!-- AI Recipe Response Modal -->
+            <div class="modal fade" id="ai-recipe-modal" tabindex="-1" aria-labelledby="ai-recipe-modal-label" aria-hidden="true">
+                <div id="ai-modal-backdrop" class="modal-backdrop hidden"></div>
+                <div class="modal-dialog modal-dialog-centered ai-recipe-modal-dialog">
+                    <div class="modal-content theme-modal-bg">
+                        <div class="modal-header">
+                            <h5 class="modal-title theme-modal-text" id="ai-recipe-modal-label">AI Generated Recipe</h5>
+                            <button type="button" class="btn-close close-ai-modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body ai-modal-body">
+                            <form id="ai-recipe-form" method="POST" action="/recipe/create" enctype="multipart/form-data">
+                                <!-- Dynamic form content will be inserted here -->
+                            </form>
+                        </div>
+                        <div class="modal-footer justify-between">
+                            <button type="button" class="btn btn-secondary close-ai-modal">
+                                <i class="fa-solid fa-times mr-2"></i>Cancel
+                            </button>
+                            <button type="submit" form="ai-recipe-form" class="btn btn-success">
+                                <i class="fa-solid fa-floppy-disk mr-2"></i>Save Recipe
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Bootstrap JS removed - now using Tailwind CSS with custom modal/dropdown implementations -->
+        <script nonce="{{ script_nonce }}">
+            // Custom dropdown implementation (replacing Bootstrap dropdown)
+            document.addEventListener('DOMContentLoaded', () => {
+                const dropdownToggle = document.getElementById('profileDropdown');
+                const dropdownMenu = dropdownToggle?.nextElementSibling;
+
+                if (dropdownToggle && dropdownMenu) {
+                    // Toggle dropdown on click
+                    dropdownToggle.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        dropdownMenu.classList.toggle('show');
+                        const isExpanded = dropdownMenu.classList.contains('show');
+                        dropdownToggle.setAttribute('aria-expanded', isExpanded);
+                    });
+
+                    // Close dropdown when clicking outside
+                    document.addEventListener('click', (e) => {
+                        if (!dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                            dropdownMenu.classList.remove('show');
+                            dropdownToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                }
+            });
+        </script>
+        <script src="{{ url_for('static', filename='js/theme.js') }}" nonce="{{ script_nonce }}"></script>
+        {% if g.user %}
+            <script src="{{ url_for('static', filename='js/ai.js') }}" nonce="{{ script_nonce }}"></script>
+        {% endif %}
+        
+        {% if js_modules.recipe %}
+            <script src="{{ url_for('static', filename='js/recipe.js') }}" nonce="{{ script_nonce }}"></script>
+        {% endif %}
+        {% if js_modules.search %}
+            <script src="{{ url_for('static', filename='js/search.js') }}" nonce="{{ script_nonce }}"></script>
+        {% endif %}
+        {% if js_modules.verify %}
+            <script src="{{ url_for('static', filename='js/verify.js') }}" nonce="{{ script_nonce }}"></script>
+        {% endif %}
+        {% if js_modules.modal %}
+            <script src="{{ url_for('static', filename='js/modal.js') }}" nonce="{{ script_nonce }}"></script>
+        {% endif %}
+        {% if js_modules.profile %}
+            <script src="{{ url_for('static', filename='js/profile.js') }}" nonce="{{ script_nonce }}"></script>
+        {% endif %}
+        {% if js_modules.grocery %}
+            <script src="{{ url_for('static', filename='js/grocery.js') }}" nonce="{{ script_nonce }}"></script>
+        {% endif %}
+        {% if js_modules.share %}
+            <script src="{{ url_for('static', filename='js/share.js') }}" nonce="{{ script_nonce }}"></script>
+        {% endif %}
+        {% if js_modules.api_key %}
+            <script src="{{ url_for('static', filename='js/api-key.js') }}" nonce="{{ script_nonce }}"></script>
+        {% endif %}
+
+        {# Modal Component Script - from component macros #}
+        {{ modal.modal_script(nonce=script_nonce) }}
+
+        <!-- JavaScript modules can be added here as needed -->
+    </body>
+</html>

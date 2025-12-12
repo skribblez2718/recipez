@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Main container with theme-aware background #}
+<div class="min-h-screen bg-background px-6 py-6">
+    {# Page Header with Actions #}
+    {% if g.user and recipes %}
+    <div class="max-w-7xl mx-auto mb-4 flex justify-end">
+        <button id="grocery-list-btn" class="btn btn-outline-coral btn-sm" data-modal-target="grocery-modal">
+            <i class="fa-solid fa-cart-shopping mr-2"></i>Create Grocery List
+        </button>
+    </div>
+    {% endif %}
+
+    {# Category Pills Section - Collapsible #}
+    <div id="category-names" class="max-w-7xl mx-auto mb-6" role="group" aria-label="Category filters">
+        {# Toggle Header #}
+        <button
+            type="button"
+            id="category-toggle"
+            class="category-toggle"
+            aria-expanded="false"
+            aria-controls="category-list"
+        >
+            <span class="category-toggle-content">
+                <i class="fa-solid fa-filter" aria-hidden="true"></i>
+                <span>Categories</span>
+                <span id="active-category-badge" class="active-category-badge hidden"></span>
+            </span>
+            <i class="fa-solid fa-chevron-down category-toggle-icon" aria-hidden="true"></i>
+        </button>
+
+        {# Collapsible Category List #}
+        <div id="category-list" class="category-list collapsed">
+            <div class="category-scroll">
+                {# All button - shows all recipes #}
+                <label class="category-pill active" for="category-all">
+                    <input
+                        type="radio"
+                        class="btn-check hidden"
+                        name="categories"
+                        id="category-all"
+                        autocomplete="off"
+                        value="all"
+                        checked
+                    >
+                    All
+                </label>
+                {# Category pills #}
+                {% for category in categories %}
+                    <label class="category-pill" for="{{ category.category_id }}">
+                        <input
+                            type="radio"
+                            class="btn-check hidden"
+                            name="categories"
+                            id="{{ category.category_id }}"
+                            autocomplete="off"
+                            value="{{ category.category_name.lower() }}"
+                        >
+                        {{ category.category_name }}
+                        {% if g.user and category.category_author_id|string == g.user.user_id|string %}
+                            <a
+                                href="/category/update/{{ category.category_id }}"
+                                class="ml-1 text-gray-400 hover:text-coral-500 transition-colors category-edit-link"
+                                title="Edit {{ category.category_name }}"
+                                aria-label="Edit {{ category.category_name }}"
+                            >
+                                <i class="fa-solid fa-pen-to-square text-xs text-[#f59e0b]"></i>
+                            </a>
+                        {% endif %}
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {# Recipe Grid - 3 columns on desktop, 2 on tablet, 1 on mobile #}
+    <div class="max-w-7xl mx-auto">
+        {% if recipes %}
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {% for recipe in recipes %}
+                    {# Recipe Card - v2 design with clickable card #}
+                    <a href="/recipe/{{ recipe.recipe_id }}" class="recipe-card-v2 recipe-item {{ recipe.recipe_category.category_name.lower().replace(' ', '-') }}-recipe" data-recipe-name="{{ recipe.recipe_name }}">
+                        {# Recipe Image - 3:4 aspect ratio (taller than wide) #}
+                        {% if recipe.recipe_image and recipe.recipe_image.image_url %}
+                            <img
+                                src="{{ recipe.recipe_image.image_url }}"
+                                class="card-image"
+                                alt="{{ recipe.recipe_name }}"
+                                loading="lazy"
+                            >
+                        {% else %}
+                            <div class="card-image bg-gray-200 flex items-center justify-center">
+                                <i class="fas fa-utensils text-4xl text-gray-400" aria-hidden="true"></i>
+                            </div>
+                        {% endif %}
+
+                        {# Card Content #}
+                        <div class="card-content">
+                            {# Recipe Title #}
+                            <h3 class="card-title">{{ recipe.recipe_name }}</h3>
+
+                            {# Author Info with profile image #}
+                            <div class="card-author flex items-center gap-2">
+                                {% if recipe.author.user_profile_image_url %}
+                                    <img
+                                        src="{{ recipe.author.user_profile_image_url }}"
+                                        alt="{{ recipe.author.user_name }}"
+                                        class="card-author-avatar"
+                                    >
+                                {% else %}
+                                    <div class="card-author-avatar-placeholder">
+                                        <i class="fas fa-user" aria-hidden="true"></i>
+                                    </div>
+                                {% endif %}
+                                <span>{{ recipe.author.user_name }}</span>
+                            </div>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            {# Empty State #}
+            <div class="text-center py-16">
+                <i class="fas fa-utensils text-6xl text-[color:var(--text-muted)] mb-4"></i>
+                <h3 class="text-xl font-semibold page-title mb-2">No Recipes Yet</h3>
+                <p class="text-[color:var(--text-secondary)] mb-6">Start building your recipe collection!</p>
+                {% if g.user %}
+                    <a href="/recipe/create" class="btn btn-coral">
+                        <i class="fa-solid fa-plus mr-2"></i>Create Your First Recipe
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{# Grocery List Modal #}
+{% if g.user %}
+<div class="modal" id="grocery-modal" tabindex="-1" role="dialog" aria-labelledby="grocery-modal-title" aria-hidden="true" data-recipes='{{ recipes|tojson|safe }}' data-jwt="{{ user_jwt }}">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog modal-dialog-centered grocery-modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="grocery-modal-title">
+                    <i class="fa-solid fa-cart-shopping mr-2 text-[#ff6b6b]"></i>
+                    Create Grocery List
+                </h2>
+            </div>
+            <div class="modal-body">
+                <p class="text-sm text-gray-400 mb-4">Select recipes to include in your grocery list:</p>
+
+                {# Searchable Recipe Dropdown #}
+                <div class="grocery-recipe-search-container mb-4">
+                    <label for="grocery-recipe-search" class="form-label">Search Recipes</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="grocery-recipe-search"
+                        placeholder="Type to search or click to browse..."
+                        autocomplete="off"
+                        aria-label="Search for recipes"
+                    >
+                    <div class="grocery-recipe-dropdown hidden" id="grocery-recipe-dropdown" role="listbox">
+                        {# Options populated via JavaScript #}
+                    </div>
+                </div>
+
+                {# Selected Recipes Pills #}
+                <div id="grocery-selected-recipes" class="mb-4">
+                    <label class="form-label">Selected Recipes</label>
+                    <div id="grocery-pills-container" class="pills-container">
+                        <p class="text-gray-500 text-sm" id="grocery-no-selection">No recipes selected</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-between">
+                <button type="button" class="btn btn-secondary close-modal">
+                    <i class="fa-solid fa-times mr-2"></i>Cancel
+                </button>
+                <button id="grocery-send-btn" class="btn btn-success" disabled>
+                    <i class="fa-solid fa-paper-plane mr-2"></i>Send
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock content %}

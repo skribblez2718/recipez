@@ -1,0 +1,200 @@
+{# Modal Component Macros - Design specifications from ux.md #}
+
+{#
+  Modal: Standard modal dialog
+  Usage:
+    {% call modal('confirmDeleteModal', 'Confirm Delete', size='md') %}
+      <p>Are you sure you want to delete this recipe?</p>
+      <div class="modal-footer">
+        {{ button('Cancel', variant='secondary', classes='close-modal') }}
+        {{ button('Delete', variant='danger', id='confirm-delete-btn') }}
+      </div>
+    {% endcall %}
+
+  CRITICAL: Preserves modal IDs for JavaScript event handlers
+#}
+{% macro modal(id, title='', size='md', classes='', centered=true) %}
+<div class="modal" id="{{ id }}" tabindex="-1" role="dialog" aria-labelledby="{{ id }}-title" aria-hidden="true">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog {% if centered %}modal-dialog-centered{% endif %} modal-{{ size }} {{ classes }}">
+    <div class="modal-content">
+      {% if title %}
+      <div class="modal-header">
+        <h2 class="modal-title" id="{{ id }}-title">{{ title }}</h2>
+        <button type="button" class="btn btn-ghost btn-sm close-modal" aria-label="Close">
+          <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      {% endif %}
+      <div class="modal-body">
+        {{ caller() }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{#
+  Simple Modal: Modal with just a close button (no header)
+  Usage:
+    {% call simple_modal('imageModal') %}
+      <img src="/path/to/image.jpg" alt="Full size image">
+    {% endcall %}
+#}
+{% macro simple_modal(id, classes='', centered=true) %}
+<div class="modal" id="{{ id }}" tabindex="-1" role="dialog" aria-label="Dialog" aria-hidden="true">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog {% if centered %}modal-dialog-centered{% endif %} {{ classes }}">
+    <div class="modal-content relative">
+      <button type="button" class="absolute top-4 right-4 z-10 btn btn-ghost btn-sm close-modal" aria-label="Close">
+        <i class="fas fa-times" aria-hidden="true"></i>
+      </button>
+      <div class="modal-body">
+        {{ caller() }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{#
+  Confirm Modal: Pre-styled confirmation dialog
+  Usage: {{ confirm_modal('deleteConfirm', 'Delete Recipe?', 'This action cannot be undone.', confirm_btn_id='confirm-delete-btn', confirm_text='Delete') }}
+#}
+{% macro confirm_modal(id, title, message, confirm_btn_id='', confirm_text='Confirm', cancel_text='Cancel', variant='danger') %}
+<div class="modal" id="{{ id }}" tabindex="-1" role="alertdialog" aria-labelledby="{{ id }}-title" aria-describedby="{{ id }}-description" aria-hidden="true">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="{{ id }}-title">{{ title }}</h2>
+      </div>
+      <div class="modal-body">
+        <p id="{{ id }}-description" class="text-base">{{ message }}</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary close-modal">{{ cancel_text }}</button>
+        <button type="button" class="btn btn-{{ variant }}" id="{{ confirm_btn_id or (id ~ '-confirm') }}">
+          {{ confirm_text }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{#
+  Form Modal: Modal containing a form
+  Usage:
+    {% call form_modal('createCategoryModal', 'Create Category', form_action='/category/create', form_method='POST') %}
+      {{ text_input('category-name', 'Category Name', required=true) }}
+      <div class="modal-footer">
+        {{ button('Cancel', variant='secondary', classes='close-modal') }}
+        {{ button('Create', variant='primary', type='submit') }}
+      </div>
+    {% endcall %}
+
+  CRITICAL: Preserves form action and method for API compatibility
+#}
+{% macro form_modal(id, title, form_action, form_method='POST', form_id='', classes='') %}
+<div class="modal" id="{{ id }}" tabindex="-1" role="dialog" aria-labelledby="{{ id }}-title" aria-hidden="true">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog modal-dialog-centered {{ classes }}">
+    <div class="modal-content">
+      <form action="{{ form_action }}" method="{{ form_method }}" {% if form_id %}id="{{ form_id }}"{% endif %}>
+        <div class="modal-header">
+          <h2 class="modal-title" id="{{ id }}-title">{{ title }}</h2>
+          <button type="button" class="btn btn-ghost btn-sm close-modal" aria-label="Close">
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          {{ caller() }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{#
+  Modal Trigger Script: JavaScript to handle modal open/close
+  Include this script once in your page, typically in base.html
+  NOTE: Requires script_nonce to be passed for CSP compliance
+#}
+{% macro modal_script(nonce='') %}
+<script{% if nonce %} nonce="{{ nonce }}"{% endif %}>
+document.addEventListener('DOMContentLoaded', function() {
+  // Open modal
+  document.querySelectorAll('[data-modal-target]').forEach(trigger => {
+    trigger.addEventListener('click', function(e) {
+      e.preventDefault();
+      const modalId = this.getAttribute('data-modal-target');
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.classList.add('show');
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        // Focus first focusable element
+        const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length > 0) focusable[0].focus();
+      }
+    });
+  });
+
+  // Close modal
+  document.querySelectorAll('.close-modal').forEach(closeBtn => {
+    closeBtn.addEventListener('click', function() {
+      const modal = this.closest('.modal');
+      if (modal) {
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    });
+  });
+
+  // Close on backdrop click
+  document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+    backdrop.addEventListener('click', function() {
+      const modal = this.parentElement;
+      if (modal) {
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    });
+  });
+
+  // Close on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal.show').forEach(modal => {
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+      });
+    }
+  });
+
+  // Trap focus within modal
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('keydown', function(e) {
+      if (e.key === 'Tab' && this.classList.contains('show')) {
+        const focusableElements = this.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey && document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
+    });
+  });
+});
+</script>
+{% endmacro %}

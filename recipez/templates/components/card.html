@@ -1,0 +1,118 @@
+{# Card Component Macros - Design specifications from ux.md #}
+
+{#
+  Recipe Card: Card for displaying recipe preview
+  Usage: {{ recipe_card(recipe, author_username='ksketch096') }}
+  CRITICAL: Maintains .recipe-item class for JavaScript filtering
+#}
+{% macro recipe_card(recipe, category_name='') %}
+<div class="card recipe-item {{ category_name|lower|replace(' ', '-') }}-recipe" data-recipe-id="{{ recipe.id }}">
+  <img
+    src="{{ recipe.image.image_path if recipe.image and recipe.image.image_path else '/static/img/default_recipe.png' }}"
+    alt="{{ recipe.name }}"
+    class="card-img-top"
+    loading="lazy"
+  />
+
+  <div class="card-body">
+    <h3 class="card-title">{{ recipe.name }}</h3>
+
+    {% if recipe.author %}
+    <div class="card-author flex items-center gap-2 mb-4">
+      <i class="fas fa-user text-sm" aria-hidden="true"></i>
+      <span>{{ recipe.author.username }}</span>
+    </div>
+    {% endif %}
+
+    <div class="card-actions">
+      <a href="/recipe/{{ recipe.id }}" class="btn btn-primary btn-full">
+        View Recipe
+      </a>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{#
+  Generic Card: Flexible card container
+  Usage:
+    {% call generic_card(title='Settings', classes='max-w-md') %}
+      <p>Card content goes here</p>
+    {% endcall %}
+#}
+{% macro generic_card(title='', classes='') %}
+<div class="card {{ classes }}">
+  {% if title %}
+  <div class="card-header px-6 py-4 border-b border-gray-200">
+    <h3 class="text-xl font-semibold">{{ title }}</h3>
+  </div>
+  {% endif %}
+  <div class="card-body">
+    {{ caller() }}
+  </div>
+</div>
+{% endmacro %}
+
+{#
+  Alert Card: Card for displaying messages (success, error, warning, info)
+  Usage: {{ alert_card('Recipe created successfully!', variant='success') }}
+#}
+{% macro alert_card(message, variant='info', dismissible=false, classes='') %}
+<div class="alert alert-{{ variant }} {{ classes }}" role="alert">
+  <div class="flex items-start gap-3">
+    {% if variant == 'success' %}
+    <i class="fas fa-check-circle text-xl" aria-hidden="true"></i>
+    {% elif variant == 'error' or variant == 'danger' %}
+    <i class="fas fa-exclamation-circle text-xl" aria-hidden="true"></i>
+    {% elif variant == 'warning' %}
+    <i class="fas fa-exclamation-triangle text-xl" aria-hidden="true"></i>
+    {% else %}
+    <i class="fas fa-info-circle text-xl" aria-hidden="true"></i>
+    {% endif %}
+
+    <div class="flex-1">
+      {{ message }}
+    </div>
+
+    {% if dismissible %}
+    <button type="button" class="btn-sm btn-ghost alert-dismiss-btn" aria-label="Close">
+      <i class="fas fa-times" aria-hidden="true"></i>
+    </button>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{#
+  Empty State Card: Card shown when no content is available
+  Usage: {{ empty_state_card('No recipes found', icon='fas fa-search', action_text='Create Recipe', action_href='/recipe/create') }}
+#}
+{% macro empty_state_card(message, icon='fas fa-inbox', action_text='', action_href='', classes='') %}
+<div class="card text-center py-12 {{ classes }}">
+  <div class="card-body">
+    <i class="{{ icon }} text-6xl text-gray-400 mb-4" aria-hidden="true"></i>
+    <p class="text-lg text-gray-600 mb-6">{{ message }}</p>
+    {% if action_text and action_href %}
+    <a href="{{ action_href }}" class="btn btn-primary">
+      {{ action_text }}
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{#
+  Loading Card Skeleton: Placeholder card while content loads
+  Usage: {{ loading_card_skeleton() }}
+#}
+{% macro loading_card_skeleton() %}
+<div class="card animate-pulse">
+  <div class="card-img-top bg-gray-300"></div>
+  <div class="card-body">
+    <div class="h-6 bg-gray-300 rounded mb-4"></div>
+    <div class="h-4 bg-gray-300 rounded mb-2"></div>
+    <div class="h-4 bg-gray-300 rounded w-3/4 mb-4"></div>
+    <div class="h-10 bg-gray-300 rounded"></div>
+  </div>
+</div>
+{% endmacro %}

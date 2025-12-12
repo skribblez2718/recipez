@@ -1,0 +1,43 @@
+/* Recipez Custom Styles - Minimal Legacy Support */
+
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* Base font family - Tailwind handles the rest */
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Pointer cursor for hover on anchor tags */
+a:hover {
+    cursor: pointer !important;
+}
+
+/* Code input focus style (for verification codes) - Uses coral to match theme */
+input[id^="code"]:focus {
+    background-color: inherit !important;
+    box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.2);
+    outline: none;
+    border-color: #ff6b6b;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+/* Dropdown menu show class (custom modal implementation) */
+.dropdown-menu.show {
+    display: block;
+}
+
+/* Theme toggle visibility */
+.theme-toggle-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Recipe hero image container - controlled size */
+.recipe-hero-image {
+    height: 13rem; /* 208px - between h-48 and h-56 */
+    max-width: 28rem; /* 448px */
+    margin-left: auto;
+    margin-right: auto;
+}

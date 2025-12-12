@@ -1,0 +1,28 @@
+# Main dependencies
+flask>=3.1.0
+pillow>=11.1.0
+python-magic>=0.4.27
+requests>=2.32.3
+cryptography>=44.0.2
+aiosmtpd>=1.4.6
+email-validator>=2.2.0
+python-dotenv>=1.0.1
+pydantic>=2.11.0
+flask-sqlalchemy>=3.1.1
+flask-migrate>=4.1.0
+itsdangerous>=2.2.0
+psycopg[binary,pool]>=3.2.6
+argon2-cffi>=23.1.0
+wtforms>=3.2.1
+flask-wtf>=1.2.2
+flask-session>=0.8.0
+langchain-openai>=0.3.19
+langchain>=0.3.25
+openai>=1.0.0
+gunicorn>=23.0.0
+bleach>=6.0.0
+flask-limiter>=3.8.0
+
+# Development dependencies
+pytest>=8.4.2
+black>=24.10.0

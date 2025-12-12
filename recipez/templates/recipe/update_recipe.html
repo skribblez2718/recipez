@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Update Recipe Form - Modern design with component macros #}
+<div class="min-h-screen bg-background px-6 py-8">
+    <div class="max-w-3xl mx-auto">
+        {# Header #}
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-3xl font-bold page-title">Update Recipe</h1>
+            <a href="/recipe/{{ existing_recipe.recipe_id }}" class="btn btn-secondary" aria-label="Go back to recipe">
+                <i class="fa-solid fa-arrow-left mr-2"></i>
+                Back
+            </a>
+        </div>
+
+        {# Flash Messages #}
+        {% if get_flashed_messages() %}
+            <div class="mb-6">
+                {% include "message.html" %}
+            </div>
+        {% endif %}
+
+        {# Main Form #}
+        <form method="POST" action="/recipe/update/{{ existing_recipe.recipe_id }}" enctype="multipart/form-data" class="space-y-6">
+            {{ recipe_form.csrf_token }}
+
+            {# Image Upload Section #}
+            <div class="card p-6">
+                <h2 class="text-xl font-semibold section-title mb-4">Recipe Image</h2>
+
+                {# Current Image Preview #}
+                {% if existing_recipe.recipe_image and existing_recipe.recipe_image.image_url %}
+                    <div class="mb-4 flex justify-center">
+                        <img
+                            src="{{ existing_recipe.recipe_image.image_url }}"
+                            alt="{{ existing_recipe.recipe_name }}"
+                            class="w-48 h-48 rounded-lg object-cover border-2 border-gray-200"
+                        >
+                    </div>
+                {% endif %}
+
+                <div class="form-group">
+                    {{ recipe_form.image.label(class_="form-label") }}
+                    <p class="text-sm text-gray-600 mb-2">Upload a new image to replace the current one</p>
+                    {{ recipe_form.image(class="form-control", accept="image/png, image/jpeg") }}
+                </div>
+            </div>
+
+            {# Category Selection #}
+            <div class="card p-6">
+                <h2 class="text-xl font-semibold section-title mb-4">Category</h2>
+
+                <div id="category-selector-container" class="form-group">
+                    {{ recipe_form.category_selector.label(class_="form-label") }}
+                    {{ recipe_form.category_selector(class="form-control", id="category_selector") }}
+                    <button
+                        type="button"
+                        id="show-add-category-btn"
+                        class="btn btn-coral mt-3"
+                    >
+                        <i class="fa-solid fa-plus mr-2"></i>
+                        Create New Category
+                    </button>
+                </div>
+
+                {# Hidden by default - shown by JavaScript #}
+                <div id="add-category-form-container" class="hidden mt-4 p-6 bg-primary-50 dark:bg-gray-800 rounded-xl border-2 border-primary-200 dark:border-gray-600">
+                    {{ category_form.csrf_token }}
+                    <div class="mb-4">
+                        <p class="text-sm font-semibold text-primary-700 dark:text-primary-400 mb-3">
+                            <i class="fa-solid fa-plus-circle mr-2"></i>
+                            New Category
+                        </p>
+                    </div>
+                    <div class="form-group">
+                        {{ category_form.name.label(class_="form-label") }}
+                        {{ category_form.name(class="form-control", id="category-name", placeholder="e.g., Desserts, Main Course", minlength=2, maxlength=50) }}
+                    </div>
+                    <div class="flex gap-3 mt-4">
+                        <button type="button" id="cancel-add-category-btn" class="btn btn-secondary">
+                            <i class="fa-solid fa-times mr-2"></i>
+                            Cancel
+                        </button>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 flex items-center ml-2">
+                            <i class="fa-solid fa-info-circle mr-2"></i>
+                            Category will be created when you submit the recipe
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Basic Info Section #}
+            <div class="card p-6">
+                <h2 class="text-xl font-semibold section-title mb-4">Basic Information</h2>
+
+                <div class="form-group mb-4">
+                    {{ recipe_form.name.label(class_="form-label") }}
+                    {{ recipe_form.name(class="form-control", minlength=2, maxlength=100, placeholder="e.g., Chocolate Chip Cookies") }}
+                </div>
+
+                <div class="form-group">
+                    {{ recipe_form.description.label(class_="form-label") }}
+                    {{ recipe_form.description(class="form-control", rows=4, placeholder="Describe your recipe...") }}
+                </div>
+            </div>
+
+            {# Ingredients Section - CRITICAL: Preserve IDs and classes for recipe.js #}
+            <div class="card p-6">
+                <h2 class="text-xl font-semibold section-title mb-4">Ingredients</h2>
+
+                <ul id="ingredients-list" class="space-y-3">
+                    {% for ingredient in recipe_form.ingredients %}
+                        <li id="{{ ingredient.id }}" class="ingredient-item p-4 rounded-lg">
+                            {{ ingredient.csrf_token }}
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                                {# Quantity - 2 columns #}
+                                <div class="md:col-span-2">
+                                    {{ ingredient.quantity.label(class_="form-label text-sm") }}
+                                    {{ ingredient.quantity(class="form-control", placeholder="2") }}
+                                </div>
+
+                                {# Measurement - 3 columns #}
+                                <div class="md:col-span-3">
+                                    {{ ingredient.measurement.label(class_="form-label text-sm") }}
+                                    {{ ingredient.measurement(class="form-control", placeholder="cups") }}
+                                </div>
+
+                                {# Ingredient Name - 7 columns #}
+                                <div class="md:col-span-7">
+                                    {{ ingredient.ingredient_name.label(class_="form-label text-sm") }}
+                                    {{ ingredient.ingredient_name(class="form-control", placeholder="flour") }}
+                                </div>
+                            </div>
+                            {% if not loop.first %}
+                                <button type="button" class="btn btn-danger btn-sm mt-3 delete-step-btn" tabindex="-1">
+                                    <i class="fa-solid fa-trash mr-1"></i>
+                                    Delete Ingredient
+                                </button>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+
+                <div class="flex justify-end mt-4">
+                    <button type="button" id="add-ingredient-btn" class="btn btn-coral">
+                        <i class="fa-solid fa-plus mr-2"></i>
+                        Add Ingredient
+                    </button>
+                </div>
+            </div>
+
+            {# Steps Section - CRITICAL: Preserve IDs and classes for recipe.js #}
+            <div class="card p-6">
+                <h2 class="text-xl font-semibold section-title mb-4">Instructions</h2>
+
+                <ol id="steps-list" class="space-y-4">
+                    {% for step in recipe_form.steps %}
+                        <li id="{{ step.id }}" class="step-item flex gap-4 items-start">
+                            <div class="step-number flex-shrink-0 w-8 h-8 flex items-center justify-center bg-[color:var(--accent-coral)] text-white rounded-full font-semibold">
+                                {{ loop.index }}
+                            </div>
+                            <div class="flex-1">
+                                {{ step.csrf_token }}
+                                <div class="form-group">
+                                    {{ step.step.label(class_="form-label text-sm") }}
+                                    {{ step.step(class="form-control", rows=3, placeholder="Describe this step...") }}
+                                </div>
+                                {% if not loop.first %}
+                                    <button type="button" class="btn btn-danger btn-sm mt-2 delete-step-btn" tabindex="-1">
+                                        <i class="fa-solid fa-trash mr-1"></i>
+                                        Delete Step
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ol>
+
+                <div class="flex justify-end mt-4">
+                    <button type="button" id="add-step-btn" class="btn btn-coral">
+                        <i class="fa-solid fa-plus mr-2"></i>
+                        Add Step
+                    </button>
+                </div>
+            </div>
+
+            {# Submit Section #}
+            <div class="flex justify-between items-center pt-4">
+                <a href="/recipe/{{ existing_recipe.recipe_id }}" class="btn btn-secondary">
+                    <i class="fa-solid fa-arrow-left mr-2"></i>
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i>
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock content %}

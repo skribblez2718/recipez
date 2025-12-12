@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Email Login - Clean centered design #}
+<div class="min-h-screen bg-background flex items-center justify-center px-6 py-8">
+    <div class="w-full max-w-md">
+        {# Flash Messages #}
+        {% if get_flashed_messages() %}
+            <div class="mb-6">
+                {% include "message.html" %}
+            </div>
+        {% endif %}
+
+        {# Login Card #}
+        <div class="card p-8">
+            {# Header #}
+            <div class="text-center mb-6">
+                <h1 class="text-3xl font-bold page-title mb-2">Welcome Back</h1>
+                <p class="text-[color:var(--text-secondary)]">Enter your email to receive a verification code</p>
+            </div>
+
+            {# Form #}
+            <form method="POST" action="/auth/login/email" class="space-y-6">
+                {{ form.csrf_token }}
+
+                <div class="form-group">
+                    {{ form.email.label(class_="form-label") }}
+                    {{ form.email(class="form-control", placeholder="your.email@example.com", autocomplete="email") }}
+                </div>
+
+                <div class="flex justify-end">
+                    {{ form.submit(class="btn btn-coral btn-full") }}
+                </div>
+            </form>
+        </div>
+
+        {# Footer Text #}
+        <p class="text-center text-sm text-[color:var(--text-secondary)] mt-6">
+            A verification code will be sent to your email
+        </p>
+    </div>
+</div>
+{% endblock content %}
