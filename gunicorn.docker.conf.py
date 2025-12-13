@@ -83,3 +83,40 @@ limit_request_line = 4094
 
 # Limit header field size
 limit_request_field_size = 8190
+
+# =============================================================================
+# FORK SAFETY HOOKS
+# =============================================================================
+# Reset SQLAlchemy connection pool after fork to prevent connection sharing
+# across worker processes. This fixes:
+# - DuplicatePreparedStatement errors (psycopg3 statement cache conflicts)
+# - StaleDataError (session identity map corruption)
+# - ResourceClosedError (shared connection file descriptors)
+
+
+def post_fork(server, worker):
+    """
+    Called after a worker has been forked.
+    Disposes the SQLAlchemy engine to create fresh connections for this worker.
+    """
+    from recipez import create_app
+    from recipez.extensions import sqla_db
+
+    app = create_app()
+    with app.app_context():
+        sqla_db.engine.dispose()
+        server.log.info(f"Worker {worker.pid}: Database connection pool reset")
+
+
+def worker_exit(server, worker):
+    """
+    Called when a worker is about to exit.
+    Ensures clean shutdown of database connections.
+    """
+    from recipez import create_app
+    from recipez.extensions import sqla_db
+
+    app = create_app()
+    with app.app_context():
+        sqla_db.session.remove()
+        sqla_db.engine.dispose()
