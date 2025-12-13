@@ -18,6 +18,7 @@ from flask import (
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 from pathlib import Path
+from urllib.parse import urlparse
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from recipez.extensions import sqla_db
@@ -56,9 +57,18 @@ def create_app(test_config: dict = None) -> Flask:
     # Set derived config values
     domain = app.config["DOMAIN"]
     base_path = app.config["BASE_PATH"]
+
+    # Build trusted hosts: localhost for internal API + external domain from JWT issuer
+    trusted_hosts = ["localhost", "127.0.0.1"]
+    jwt_issuer = app.config.get("RECIPEZ_JWT_ISSUER", "")
+    if jwt_issuer:
+        parsed = urlparse(jwt_issuer)
+        if parsed.netloc and parsed.netloc not in trusted_hosts:
+            trusted_hosts.append(parsed.netloc)
+
     app.config.update(
         SESSION_SQLALCHEMY=sqla_db,
-        TRUSTED_HOSTS=["localhost", "127.0.0.1", domain],
+        TRUSTED_HOSTS=trusted_hosts,
         RECIPEZ_SYSTEM_USER_ID=uuid.uuid4(),
         RECIPEZ_SYSTEM_USER_NAME="yeschef",
         RECIPEZ_SYSTEM_USER_EMAIL=f"yeschef@{domain}",
