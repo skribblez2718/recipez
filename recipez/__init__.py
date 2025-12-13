@@ -58,7 +58,7 @@ def create_app(test_config: dict = None) -> Flask:
     base_path = app.config["BASE_PATH"]
     app.config.update(
         SESSION_SQLALCHEMY=sqla_db,
-        TRUSTED_HOSTS=[f"{domain}"],
+        TRUSTED_HOSTS=["localhost", "127.0.0.1", domain],
         RECIPEZ_SYSTEM_USER_ID=uuid.uuid4(),
         RECIPEZ_SYSTEM_USER_NAME="yeschef",
         RECIPEZ_SYSTEM_USER_EMAIL=f"yeschef@{domain}",
