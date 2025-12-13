@@ -20,8 +20,8 @@ bind = "0.0.0.0:5000"
 # =============================================================================
 # WORKER CONFIGURATION
 # =============================================================================
-# Single worker mode to avoid SQLAlchemy connection pool issues with forked processes
-workers = int(os.environ.get("GUNICORN_WORKERS", 1))
+# Worker processes - match local dev config
+workers = int(os.environ.get("GUNICORN_WORKERS", min(multiprocessing.cpu_count() * 2 + 1, 4)))
 worker_class = "sync"
 
 # Thread count per worker (for sync workers, this is 1)
@@ -60,8 +60,8 @@ proc_name = "recipez"
 # =============================================================================
 # SERVER MECHANICS
 # =============================================================================
-# Preload app for faster worker spawning and shared memory
-preload_app = True
+# Disable preload to avoid app initialization issues (matches local dev config)
+preload_app = False
 
 # Worker tmp directory (use memory for performance in containers)
 worker_tmp_dir = "/dev/shm"
