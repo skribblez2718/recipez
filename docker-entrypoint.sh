@@ -69,34 +69,18 @@ wait_for_db() {
 
     log_info "Waiting for database to be ready (max ${max_attempts} attempts)..."
 
-    # Extract host and port from DATABASE_URL for connection check
-    # Use Python to parse since bash regex is limited
-    local db_check
-    db_check=$(python3 -c "
-import os
-from urllib.parse import urlparse
-url = os.environ.get('DATABASE_URL', '')
-parsed = urlparse(url.replace('+psycopg', ''))
-print(f'{parsed.hostname}:{parsed.port or 5432}')
-" 2>/dev/null || echo "localhost:5432")
+    # Give the network a moment to fully initialize (fixes DNS race condition)
+    sleep 5
 
-    local db_host="${db_check%:*}"
-    local db_port="${db_check#*:}"
+    # Use DB_HOST and DB_PORT directly (set via docker-compose environment)
+    local db_host="${DB_HOST:-postgres}"
+    local db_port="${DB_PORT:-5432}"
 
     log_info "Checking database connectivity at ${db_host}:${db_port}..."
 
     while [ $attempt -le $max_attempts ]; do
-        if python3 -c "
-import socket
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.settimeout(2)
-try:
-    s.connect(('${db_host}', ${db_port}))
-    s.close()
-    exit(0)
-except:
-    exit(1)
-" 2>/dev/null; then
+        # Use bash /dev/tcp for TCP check (works in bash without external tools)
+        if (echo > /dev/tcp/"$db_host"/"$db_port") 2>/dev/null; then
             log_info "Database is accepting connections!"
             return 0
         fi
