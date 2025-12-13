@@ -7,7 +7,7 @@ Provides two endpoints:
 """
 
 from flask import Blueprint, jsonify, current_app
-from recipez.extensions import sqla_db
+from recipez.extensions import sqla_db, csrf
 from sqlalchemy import text
 
 health_api_bp = Blueprint("health_api", __name__, url_prefix="/health")
@@ -15,6 +15,7 @@ health_api_bp = Blueprint("health_api", __name__, url_prefix="/health")
 
 @health_api_bp.route("", methods=["GET"])
 @health_api_bp.route("/", methods=["GET"])
+@csrf.exempt  # Health checks are external - no CSRF needed
 def health_check():
     """
     Health check endpoint for Docker and orchestration systems.
@@ -44,6 +45,7 @@ def health_check():
 
 
 @health_api_bp.route("/ready", methods=["GET"])
+@csrf.exempt  # Health checks are external - no CSRF needed
 def readiness_check():
     """
     Readiness check - verifies app is ready to receive traffic.

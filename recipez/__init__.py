@@ -202,37 +202,40 @@ def create_app(test_config: dict = None) -> Flask:
                 )
                 user_count = result.scalar()
 
-            if user_count and user_count > 0:
-                try:
-                    from recipez.utils import RecipezSecretsUtils
-                    from recipez.repository import UserRepository
+            # If table is empty, create system user first
+            if not user_count or user_count == 0:
+                app.logger.info("User table empty; creating system user...")
+                from recipez.db import _load_initial_data
+                _load_initial_data()
 
-                    system_user_email = app.config["RECIPEZ_SYSTEM_USER_EMAIL"]
-                    system_user_email_hmac = RecipezSecretsUtils.generate_hmac(
-                        system_user_email
-                    )
+            # Now find system user and generate JWT (always runs when table exists)
+            try:
+                from recipez.utils import RecipezSecretsUtils
+                from recipez.repository import UserRepository
 
-                    system_user = UserRepository.get_user_by_email_hmac(
-                        system_user_email_hmac
-                    )
-                    if system_user is not None:
-                        system_user_jwt = RecipezSecretsUtils.generate_jwt(
-                            user_sub=system_user.user_sub,
-                            scopes=app.config["RECIPEZ_SYSTEM_USER_JWT_SCOPES"],
-                        )
-                        app.config["RECIPEZ_SYSTEM_USER_JWT"] = system_user_jwt
-                    else:
-                        app.logger.warning(
-                            "System user not found. Ensure migrations ran and the system user exists."
-                        )
-                        app.config["RECIPEZ_SYSTEM_USER_JWT"] = None
-                except Exception as e:
-                    app.logger.warning(f"System user bootstrap skipped due to error: {e}")
-                    app.config["RECIPEZ_SYSTEM_USER_JWT"] = None
-            else:
-                app.logger.info(
-                    "User table present but empty; skipping system JWT bootstrap."
+                system_user_email = app.config["RECIPEZ_SYSTEM_USER_EMAIL"]
+                system_user_email_hmac = RecipezSecretsUtils.generate_hmac(
+                    system_user_email
                 )
+
+                system_user = UserRepository.get_user_by_email_hmac(
+                    system_user_email_hmac
+                )
+                if system_user is not None:
+                    system_user_jwt = RecipezSecretsUtils.generate_jwt(
+                        user_sub=system_user.user_sub,
+                        scopes=app.config["RECIPEZ_SYSTEM_USER_JWT_SCOPES"],
+                    )
+                    app.config["RECIPEZ_SYSTEM_USER_JWT"] = system_user_jwt
+                    app.logger.info("System JWT successfully generated.")
+                else:
+                    app.logger.warning(
+                        "System user not found after creation attempt. Check _load_initial_data()."
+                    )
+                    app.config["RECIPEZ_SYSTEM_USER_JWT"] = None
+            except Exception as e:
+                app.logger.warning(f"System user bootstrap failed: {e}")
+                app.config["RECIPEZ_SYSTEM_USER_JWT"] = None
         except Exception as e:
             app.logger.warning(f"Skipping system JWT bootstrap due to error: {e}")
 
