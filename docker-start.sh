@@ -84,6 +84,25 @@ check_env_file() {
     fi
 }
 
+setup_directories() {
+    # Create persistent data directories with proper permissions
+    # Use RECIPEZ_DATA_DIR from env or default to ~/.recipez
+    # shellcheck disable=SC1091
+    source .env.docker 2>/dev/null || true
+    local data_dir="${RECIPEZ_DATA_DIR:-$HOME/.recipez}"
+
+    if [ ! -d "$data_dir" ]; then
+        log_info "Creating data directories in $data_dir"
+        mkdir -p "$data_dir"/{uploads,certs,pgdata}
+        chmod 777 "$data_dir/uploads" "$data_dir/certs"
+        # pgdata needs postgres user ownership (UID 70 in alpine)
+        if command -v sudo &> /dev/null; then
+            sudo chown 70:70 "$data_dir/pgdata" 2>/dev/null || log_warn "Could not set pgdata ownership (may need sudo)"
+        fi
+        log_info "Data directories created"
+    fi
+}
+
 check_docker() {
     if ! command -v docker &> /dev/null; then
         log_error "Docker is not installed or not in PATH"
@@ -138,6 +157,7 @@ cmd_start() {
     done
 
     check_env_file
+    setup_directories
 
     log_header "Starting Recipez with bundled PostgreSQL"
 
@@ -180,6 +200,8 @@ cmd_start_external() {
         echo '    DATABASE_URL=postgresql+psycopg://user:password@host:5432/dbname?options=-c%20search_path=recipez'
         exit 1
     fi
+
+    setup_directories
 
     log_header "Starting Recipez with external database"
     log_info "Using DATABASE_URL from .env.docker"

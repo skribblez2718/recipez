@@ -59,9 +59,9 @@ services:
     # App binds directly to host port 5000
 
     volumes:
-      # Bind mounts to /home/user for persistence across AppVM reboots
-      - /home/user/.recipez/uploads:/app/recipez/static/uploads
-      - /home/user/.recipez/certs:/app/recipez/certs
+      # Bind mounts for persistence (set RECIPEZ_DATA_DIR in .env.docker or defaults to ~/.recipez)
+      - ${RECIPEZ_DATA_DIR:-~/.recipez}/uploads:/app/recipez/static/uploads
+      - ${RECIPEZ_DATA_DIR:-~/.recipez}/certs:/app/recipez/certs
 
     depends_on:
       postgres:
@@ -87,6 +87,9 @@ services:
     container_name: recipez-postgres
     restart: unless-stopped
 
+    # Use host network so app (also on host network) can reach via localhost
+    network_mode: host
+
     environment:
       - POSTGRES_USER=${DB_USER:-recipez}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
@@ -94,8 +97,8 @@ services:
       - DB_SCHEMA=${DB_SCHEMA:-recipez}
 
     volumes:
-      # Bind mount to /home/user for persistence across AppVM reboots
-      - /home/user/.recipez/pgdata:/var/lib/postgresql/data
+      # Bind mount for persistence (set RECIPEZ_DATA_DIR in .env.docker or defaults to ~/.recipez)
+      - ${RECIPEZ_DATA_DIR:-~/.recipez}/pgdata:/var/lib/postgresql/data
 
       # Initialization script (creates schema on first run)
       - ./init-db.sh:/docker-entrypoint-initdb.d/01-init-schema.sh:ro
@@ -109,9 +112,6 @@ services:
 
     # Shared memory for PostgreSQL performance
     shm_size: 128mb
-
-    networks:
-      - recipez-network
 
     profiles:
       - default
@@ -143,9 +143,9 @@ services:
     # App binds directly to host port 5000
 
     volumes:
-      # Bind mounts to /home/user for persistence across AppVM reboots
-      - /home/user/.recipez/uploads:/app/recipez/static/uploads
-      - /home/user/.recipez/certs:/app/recipez/certs
+      # Bind mounts for persistence (set RECIPEZ_DATA_DIR in .env.docker or defaults to ~/.recipez)
+      - ${RECIPEZ_DATA_DIR:-~/.recipez}/uploads:/app/recipez/static/uploads
+      - ${RECIPEZ_DATA_DIR:-~/.recipez}/certs:/app/recipez/certs
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
@@ -160,28 +160,16 @@ services:
       - external-db
 
 # =============================================================================
-# VOLUMES
+# NOTES
 # =============================================================================
-volumes:
-  # User-uploaded recipe images
-  recipez-uploads:
-    name: recipez-uploads
-    driver: local
-
-  # PostgreSQL database files
-  recipez-pgdata:
-    name: recipez-pgdata
-    driver: local
-
-  # JWT signing certificates
-  recipez-certs:
-    name: recipez-certs
-    driver: local
-
-# =============================================================================
-# NETWORKS
-# =============================================================================
-networks:
-  recipez-network:
-    name: recipez-network
-    driver: bridge
+# This configuration uses bind mounts for data persistence.
+# Set RECIPEZ_DATA_DIR in .env.docker (defaults to ~/.recipez).
+#
+# Before starting, create directories with proper permissions:
+#
+#   export DATA_DIR="${RECIPEZ_DATA_DIR:-$HOME/.recipez}"
+#   mkdir -p "$DATA_DIR"/{uploads,certs,pgdata}
+#   chmod 777 "$DATA_DIR/uploads" "$DATA_DIR/certs"
+#   sudo chown 70:70 "$DATA_DIR/pgdata"
+#
+# Both app and postgres use host networking for simplified connectivity.

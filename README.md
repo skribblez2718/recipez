@@ -108,6 +108,33 @@ DATABASE_URL=postgresql+psycopg://user:password@db-server.example.com:5432/recip
 docker compose --profile external-db up -d
 ```
 
+#### Persistent Data Directories
+
+Data is stored in `RECIPEZ_DATA_DIR` (defaults to `~/.recipez`). The `docker-start.sh` script creates these automatically, but for manual setup:
+
+```bash
+# Set custom data directory (optional, add to .env.docker)
+export RECIPEZ_DATA_DIR="$HOME/.recipez"
+
+# Create directories
+mkdir -p "$RECIPEZ_DATA_DIR"/{uploads,certs,pgdata}
+
+# Set permissions for app container (runs as non-root 'recipez' user)
+chmod 777 "$RECIPEZ_DATA_DIR/uploads" "$RECIPEZ_DATA_DIR/certs"
+
+# Set ownership for PostgreSQL container (runs as UID 70 in alpine)
+sudo chown 70:70 "$RECIPEZ_DATA_DIR/pgdata"
+```
+
+#### Qubes OS Deployment
+
+For Qubes OS AppVM deployments, a separate `rc.local` script is used (not included in this repository) that:
+- Runs on AppVM boot
+- Pulls latest code from git
+- Creates persistent directories in `/home/user/.recipez/` (survives reboots)
+- Builds and starts containers with host networking (for inter-VM communication)
+- Sets up `qvm-connect-tcp` for cross-Qube service access (e.g., AI services on another AppVM)
+
 ---
 
 ### Option B: Local Python Setup
