@@ -22,6 +22,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: production
     container_name: recipez-app
     restart: unless-stopped
 
@@ -122,6 +123,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: production
     container_name: recipez-app
     restart: unless-stopped
 
