@@ -630,16 +630,6 @@ class RecipezAuthZUtils:
 
     #########################[ end ai_modify_recipe_required ]###################
 
-    #########################[ start ai_speech_to_text_required ]#################
-    @staticmethod
-    def ai_speech_to_text_required(
-        view_func: Callable[..., WerkzeugResponse]
-    ) -> Callable[..., WerkzeugResponse]:
-        """Decorator for 'ai:speech-to-text' scope."""
-        return RecipezAuthZUtils.scope_required("ai:speech-to-text")(view_func)
-
-    #########################[ end ai_speech_to_text_required ]###################
-
     #########################[ start ai_grocery_list_required ]#################
     @staticmethod
     def ai_grocery_list_required(

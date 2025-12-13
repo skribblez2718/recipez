@@ -6,7 +6,7 @@ from langchain_openai import ChatOpenAI
 
 from recipez.utils import RecipezAuthNUtils, RecipezAuthZUtils, RecipezErrorUtils
 from recipez.repository import RecipeRepository
-from recipez.schema import AICreateRecipeSchema, AIModifyRecipeSchema, AISTTSchema
+from recipez.schema import AICreateRecipeSchema, AIModifyRecipeSchema
 from recipez.extensions import csrf
 
 bp = Blueprint("api/ai", __name__, url_prefix="/api/ai")
@@ -37,16 +37,6 @@ def _get_model():
         base_url=current_app.config.get("RECIPEZ_OPENAI_API_BASE") or None,
         model=model_id,
         request_timeout=180.0,  # 3 minutes to handle model loading on first request
-    )
-
-
-def _get_openai_client():
-    """Get OpenAI client for STT operations."""
-    import openai
-    return openai.OpenAI(
-        api_key=current_app.config.get("RECIPEZ_OPENAI_API_KEY"),
-        base_url=current_app.config.get("RECIPEZ_OPENAI_API_BASE") or None,
-        timeout=180.0,  # 3 minutes for audio transcription
     )
 
 
@@ -129,62 +119,6 @@ def ai_create_recipe_api():
         return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
     return jsonify({"response": {"recipe": content}})
-
-
-@bp.route("/stt", methods=["POST"])
-@csrf.exempt  # Exempt from CSRF protection - protected by JWT authentication
-@RecipezAuthNUtils.jwt_required
-@RecipezAuthZUtils.ai_speech_to_text_required
-def ai_speech_to_text_api():
-    """Convert speech audio to text using OpenAI STT API."""
-    name = "ai.ai_speech_to_text_api"
-    response_msg = "Failed to transcribe audio"
-
-    try:
-        # Validate file upload
-        if 'audio' not in request.files:
-            return jsonify({"response": {"error": "No audio file provided"}}), 400
-
-        audio_file = request.files['audio']
-        if audio_file.filename == '':
-            return jsonify({"response": {"error": "No audio file selected"}}), 400
-
-        # Validate using schema
-        data = AISTTSchema(audio_file=audio_file)
-
-    except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
-
-    try:
-        # Get OpenAI client
-        client = _get_openai_client()
-
-        # Transcribe audio
-        # Reset file pointer for reading
-        audio_file.seek(0)
-
-        transcript = client.audio.transcriptions.create(
-            model="whisper-1",
-            file=audio_file,
-            response_format="text"
-        )
-
-        # Log successful transcription
-        user_id = getattr(g.user, "user_id", "unknown") if g.user else "unknown"
-        current_app.logger.info(
-            f"STT transcription successful for user: {user_id}, "
-            f"file_size: {getattr(audio_file, 'content_length', 'unknown')}, "
-            f"content_type: {getattr(audio_file, 'content_type', 'unknown')}"
-        )
-
-        return jsonify({
-            "response": {
-                "transcription": transcript.strip() if hasattr(transcript, 'strip') else str(transcript).strip()
-            }
-        })
-
-    except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
 
 @bp.route("/modify", methods=["POST"])

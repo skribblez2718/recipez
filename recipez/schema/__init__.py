@@ -43,7 +43,6 @@ from recipez.schema.recipe import (
 from recipez.schema.ai import (
     AICreateRecipeSchema,
     AIModifyRecipeSchema,
-    AISTTSchema,
 )
 from recipez.schema.grocery import (
     GroceryListRequestSchema,
@@ -94,6 +93,5 @@ __all__ = [
     "ReadUserByEmailSchema",
     "AICreateRecipeSchema",
     "AIModifyRecipeSchema",
-    "AISTTSchema",
     "GroceryListRequestSchema",
 ]
