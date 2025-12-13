@@ -55,7 +55,7 @@ def index() -> str:
             name, request, e, category_response_msg
         )
 
-    if not response or "error" in response:
+    if response is None or (isinstance(response, dict) and "error" in response):
         error_msg = response.get("error", category_response_msg)
         error = index_error.format(
             method="RecipezCategoryUtils.read_all_categories", error_msg=error_msg
@@ -74,7 +74,7 @@ def index() -> str:
             name, request, e, recipe_response_msg
         )
 
-    if not response or "error" in response:
+    if response is None or (isinstance(response, dict) and "error" in response):
         error_msg = response.get("error", recipe_response_msg)
         error = index_error.format(
             method="RecipezRecipeUtils.read_all_recipes", error_msg=error_msg

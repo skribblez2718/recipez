@@ -134,7 +134,7 @@ def login_email_view() -> Response:
         except Exception as e:
             response = RecipezErrorUtils.handle_api_error(name, request, e, email_error)
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", email_error)
             error = email_error.format(
                 method="RecipezCodeUtils.create_code", error_msg=error_msg
@@ -151,7 +151,7 @@ def login_email_view() -> Response:
         except Exception as e:
             response = RecipezErrorUtils.handle_api_error(name, request, e, email_error)
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", email_error)
             error = email_error.format(
                 method="RecipezEmailUtils.email_code", error_msg=error_msg
@@ -241,7 +241,7 @@ def login_verify_view() -> Response:
                 name, request, e, response_msg
             )
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", response_msg)
             error = verify_error.format(
                 method="RecipezCodeUtils.read_code", error_msg=error_msg
@@ -260,7 +260,7 @@ def login_verify_view() -> Response:
                 name, request, e, response_msg
             )
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", response_msg)
             if "attempts remaining" in error_msg:
                 flash(error_msg, category="warning")
@@ -284,7 +284,7 @@ def login_verify_view() -> Response:
                 name, request, e, response_msg
             )
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", response_msg)
             error = verify_error.format(
                 method="RecipezCodeUtils.delete_code", error_msg=error_msg
@@ -321,7 +321,7 @@ def login_verify_view() -> Response:
                     name, request, e, response_msg
                 )
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = "No response received from RecipezUserUtils.create_user"
             error = verify_error.format(
                 method="RecipezUserUtils.create_user", error_msg=error_msg

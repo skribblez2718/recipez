@@ -98,7 +98,7 @@ def create_category() -> Union[str, Any]:
                 name, request, e, category_error
             )
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", category_error)
             error = category_error.format(error_msg=error_msg)
             if "already exists" in error_msg.lower():
@@ -185,7 +185,7 @@ def update_category(pk: str) -> Union[str, Any]:
     except Exception as e:
         response = RecipezErrorUtils.handle_api_error(name, request, e, category_error)
 
-    if not response or "error" in response:
+    if response is None or (isinstance(response, dict) and "error" in response):
         error_msg = response.get("error", category_error)
         error = category_error.format(
             method="RecipezCategoryUtils.read_category_by_id", error_msg=error_msg
@@ -230,7 +230,7 @@ def update_category(pk: str) -> Union[str, Any]:
                     name, request, e, category_error
                 )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 error_msg = response.get("error", category_error)
                 error = category_error.format(
                     method="RecipezCategoryUtils.update_category", error_msg=error_msg
@@ -254,7 +254,7 @@ def update_category(pk: str) -> Union[str, Any]:
                     name, request, e, category_error
                 )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 error_msg = response.get("error", category_error)
                 error = category_error.format(
                     method="RecipezCategoryUtils.delete_category", error_msg=error_msg

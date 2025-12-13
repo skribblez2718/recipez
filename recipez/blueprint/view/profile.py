@@ -39,7 +39,7 @@ def profile() -> str:
             response = RecipezProfileUtils.update_profile_image(
                 session["user_jwt"], request, session["user_id"], image_file
             )
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 error_msg = response.get("error", response_msg)
                 return RecipezErrorUtils.handle_view_error(
                     name, request, error_msg, response_msg, **template_params
@@ -48,7 +48,7 @@ def profile() -> str:
             return redirect(url_for("profile.profile"))
     # GET
     response = RecipezProfileUtils.read_profile(session["user_jwt"], request)
-    if not response or "error" in response:
+    if response is None or (isinstance(response, dict) and "error" in response):
         error_msg = response.get("error", response_msg)
         return RecipezErrorUtils.handle_view_error(
             name, request, error_msg, response_msg, **template_params

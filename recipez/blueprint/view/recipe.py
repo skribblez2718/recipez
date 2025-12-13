@@ -85,7 +85,7 @@ def create_recipe_view():
     except Exception as e:
         response = RecipezErrorUtils.handle_api_error(name, request, e, recipe_error)
 
-    if not response or "error" in response:
+    if response is None or (isinstance(response, dict) and "error" in response):
         response_msg = "An error occurred while loading the categories"
         error_msg = response.get("error", response_msg)
         error = recipe_error.format(
@@ -155,7 +155,7 @@ def create_recipe_view():
                 ),
             )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 error_msg = response.get("error", "An internal error occurred")
                 if "already exists" in error_msg.lower():
                     response_msg = error_msg
@@ -214,7 +214,7 @@ def create_recipe_view():
                 recipe_author_id=author_id,
             )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 RecipezRecipeUtils.cleanup_recipe_category(
                     new_category_created, authorization, recipe_category_id, request
                 )
@@ -246,7 +246,7 @@ def create_recipe_view():
                 ingredient_forms=recipe_form.ingredients.entries,
             )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 RecipezRecipeUtils.cleanup_recipe_category(
                     new_category_created, authorization, recipe_category_id, request
                 )
@@ -277,7 +277,7 @@ def create_recipe_view():
                 step_forms=recipe_form.steps.entries,
             )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 RecipezRecipeUtils.cleanup_recipe_category(
                     new_category_created, authorization, recipe_category_id, request
                 )
@@ -379,7 +379,7 @@ def read_recipe_view(pk: UUID):
             name, request, e, response_message
         )
 
-    if not response or "error" in response:
+    if response is None or (isinstance(response, dict) and "error" in response):
         error_msg = response.get("error", response_message)
         error = recipe_error.format(
             method="RecipezRecipeUtils.get_recipe", error_msg=error_msg
@@ -453,7 +453,7 @@ def update_recipe_view(pk):
     except Exception as e:
         response = RecipezErrorUtils.handle_api_error(name, request, e, recipe_error)
 
-    if not response or "error" in response:
+    if response is None or (isinstance(response, dict) and "error" in response):
         response_msg = "An error occurred while loading the recipe"
         error_msg = response.get("error", response_msg)
         error = recipe_error.format(
@@ -480,7 +480,7 @@ def update_recipe_view(pk):
     except Exception as e:
         response = RecipezErrorUtils.handle_api_error(name, request, e, recipe_error)
 
-    if not response or "error" in response:
+    if response is None or (isinstance(response, dict) and "error" in response):
         response_msg = "An error occurred while loading the categories"
         error_msg = response.get("error", response_msg)
         error = recipe_error.format(
@@ -558,7 +558,7 @@ def update_recipe_view(pk):
                 ),
             )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 error_msg = response.get("error", "An internal error occurred")
                 if "already exists" in error_msg.lower():
                     response_msg = error_msg
@@ -640,7 +640,7 @@ def update_recipe_view(pk):
                 updates=recipe_updates
             )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 # Rollback category changes if a new category was created
                 RecipezRecipeUtils.cleanup_recipe_category(
                     new_category_created, authorization, recipe_category.get("category_id", ""), request
@@ -672,7 +672,7 @@ def update_recipe_view(pk):
                 ingredient_forms=recipe_form.ingredients.entries,
             )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 # Rollback category changes if a new category was created
                 RecipezRecipeUtils.cleanup_recipe_category(
                     new_category_created, authorization, recipe_category.get("category_id", ""), request
@@ -701,7 +701,7 @@ def update_recipe_view(pk):
                 step_forms=recipe_form.steps.entries,
             )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 # Rollback category changes if a new category was created
                 RecipezRecipeUtils.cleanup_recipe_category(
                     new_category_created, authorization, recipe_category.get("category_id", ""), request
@@ -806,7 +806,7 @@ def delete_recipe_view(pk):
             name, request, e, "Failed to delete recipe"
         )
 
-    if not response or "error" in response:
+    if response is None or (isinstance(response, dict) and "error" in response):
         flash("Failed to delete recipe", "danger")
     else:
         flash("Recipe deleted", "success")

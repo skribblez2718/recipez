@@ -80,7 +80,7 @@ class RecipezAPIUtils:
                     name, request, log_msg, response_msg
                 )
 
-            if not response or "error" in response:
+            if response is None or (isinstance(response, dict) and "error" in response):
                 error_msg = response.get("error", response_msg)
                 log_msg = f"An error occured for {path}: {error_msg}"
                 if "already exists" in error_msg.lower():

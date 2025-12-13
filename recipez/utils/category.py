@@ -52,7 +52,7 @@ class RecipezCategoryUtils:
         except Exception as e:
             response = RecipezErrorUtils.handle_util_error(name, request, e, response_msg)
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", response_msg)
             if "already exists" in error_msg.lower():
                 response_msg = error_msg
@@ -93,7 +93,7 @@ class RecipezCategoryUtils:
         except Exception as e:
             response = RecipezErrorUtils.handle_util_error(name, request, e, response_msg)
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", response_msg)
             return RecipezErrorUtils.handle_util_error(
                 name, request, error_msg, response_msg
@@ -130,7 +130,7 @@ class RecipezCategoryUtils:
         except Exception as e:
             response = RecipezErrorUtils.handle_util_error(name, request, e, response_msg)
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", response_msg)
             return RecipezErrorUtils.handle_util_error(
                 name, request, error_msg, response_msg
@@ -173,7 +173,7 @@ class RecipezCategoryUtils:
         except Exception as e:
             return RecipezErrorUtils.handle_util_error(name, request, e, response_msg)
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", response_msg)
             return RecipezErrorUtils.handle_util_error(
                 name, request, error_msg, response_msg
@@ -212,7 +212,7 @@ class RecipezCategoryUtils:
         except Exception as e:
             return RecipezErrorUtils.handle_util_error(name, request, e, response_msg)
 
-        if not response or "error" in response:
+        if response is None or (isinstance(response, dict) and "error" in response):
             error_msg = response.get("error", response_msg)
             return RecipezErrorUtils.handle_util_error(
                 name, request, error_msg, response_msg
