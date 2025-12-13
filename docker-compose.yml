@@ -59,11 +59,9 @@ services:
     # App binds directly to host port 5000
 
     volumes:
-      # Persistent storage for uploaded images
-      - recipez-uploads:/app/recipez/static/uploads
-
-      # JWT certificates (persist across restarts)
-      - recipez-certs:/app/recipez/certs
+      # Bind mounts to /home/user for persistence across AppVM reboots
+      - /home/user/.recipez/uploads:/app/recipez/static/uploads
+      - /home/user/.recipez/certs:/app/recipez/certs
 
     depends_on:
       postgres:
@@ -96,8 +94,8 @@ services:
       - DB_SCHEMA=${DB_SCHEMA:-recipez}
 
     volumes:
-      # Persistent database storage
-      - recipez-pgdata:/var/lib/postgresql/data
+      # Bind mount to /home/user for persistence across AppVM reboots
+      - /home/user/.recipez/pgdata:/var/lib/postgresql/data
 
       # Initialization script (creates schema on first run)
       - ./init-db.sh:/docker-entrypoint-initdb.d/01-init-schema.sh:ro
@@ -129,6 +127,9 @@ services:
     container_name: recipez-app
     restart: unless-stopped
 
+    # Use host network to access services on host (e.g., Open WebUI at 127.0.0.1:8080)
+    network_mode: host
+
     env_file:
       - .env.docker
 
@@ -138,12 +139,13 @@ services:
       - INIT_DB=${INIT_DB:-false}
       - DB_WAIT_TIMEOUT=${DB_WAIT_TIMEOUT:-30}
 
-    ports:
-      - "${APP_PORT:-5000}:5000"
+    # Note: ports mapping not needed with network_mode: host
+    # App binds directly to host port 5000
 
     volumes:
-      - recipez-uploads:/app/recipez/static/uploads
-      - recipez-certs:/app/recipez/certs
+      # Bind mounts to /home/user for persistence across AppVM reboots
+      - /home/user/.recipez/uploads:/app/recipez/static/uploads
+      - /home/user/.recipez/certs:/app/recipez/certs
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
@@ -152,8 +154,7 @@ services:
       retries: 3
       start_period: 60s
 
-    networks:
-      - recipez-network
+    # Note: networks not used with network_mode: host
 
     profiles:
       - external-db
