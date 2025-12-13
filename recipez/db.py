@@ -116,6 +116,7 @@ def _load_initial_data() -> None:
         "Seasonings",
         "Marinades",
         "Dressings",
+        "Dog Treats",
     ]
     for category_name in category_names:
         try:
