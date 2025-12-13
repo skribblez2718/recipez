@@ -46,7 +46,12 @@ class Config:
 
     # Application settings
     DOMAIN = os.environ.get("DOMAIN", "recipez.local")
+    WEB_PORT = os.environ.get("WEB_PORT", "5000")
     BASE_PATH = Path(__file__).resolve().parent
+
+    # JWT issuer/audience - defaults to https://{DOMAIN} but can be overridden
+    RECIPEZ_JWT_ISSUER = os.environ.get("RECIPEZ_JWT_ISSUER", f"https://{DOMAIN}")
+    RECIPEZ_JWT_AUDIENCE = os.environ.get("RECIPEZ_JWT_AUDIENCE", f"https://{DOMAIN}")
 
     # Security settings
     SECRET_KEY = os.environ.get("SECRET_KEY")
@@ -160,12 +165,11 @@ class DevelopmentConfig(Config):
     Development configuration. Insecure settings, debug output.
     """
 
-    DOMAIN = "recipez.local"
     SESSION_COOKIE_SECURE = False
-    TRUSTED_HOSTS = ["localhost", "127.0.0.1", "recipez.local"]
-    RECIPEZ_WEB_HOSTNAME = f"http://{DOMAIN}:5000"
-    RECIPEZ_JWT_ISSUER = f"http://{DOMAIN}:5000"
-    RECIPEZ_JWT_AUDIENCE = f"http://{DOMAIN}:5000"
+    TRUSTED_HOSTS = ["localhost", "127.0.0.1", Config.DOMAIN]
+    # Internal API calls use localhost to avoid external routing
+    RECIPEZ_WEB_HOSTNAME = f"http://localhost:{Config.WEB_PORT}"
+    # JWT_ISSUER and JWT_AUDIENCE inherited from base Config (from env vars)
 
 
 class ProductionConfig(Config):
@@ -173,12 +177,11 @@ class ProductionConfig(Config):
     Production configuration. Secure settings, no debug output.
     """
 
-    DOMAIN = "recipez.skribblez.net"
     SESSION_COOKIE_SECURE = True
-    TRUSTED_HOSTS = [f"{DOMAIN}"]
-    RECIPEZ_WEB_HOSTNAME = f"https://{DOMAIN}"
-    RECIPEZ_JWT_ISSUER = f"https://{DOMAIN}"
-    RECIPEZ_JWT_AUDIENCE = f"https://{DOMAIN}"
+    TRUSTED_HOSTS = [Config.DOMAIN]
+    # Internal API calls use localhost to bypass Cloudflare
+    RECIPEZ_WEB_HOSTNAME = f"http://localhost:{Config.WEB_PORT}"
+    # JWT_ISSUER and JWT_AUDIENCE inherited from base Config (from env vars)
 
 
 config = {"development": DevelopmentConfig, "production": ProductionConfig}
