@@ -14,6 +14,7 @@ class BaseStepSchema(BaseModel):
 
     step_description: constr(
         min_length=2,
+        max_length=2000,
     )
 
 

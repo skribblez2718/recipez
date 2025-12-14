@@ -22,8 +22,8 @@ class BaseCategoryForm(FlaskForm):
             InputRequired(),
             Length(min=2, max=50),
             Regexp(
-                regex=r"^[a-zA-Z0-9-_' ]+$",
-                message="Category name can only contain letters, numbers, underscores, hypens, and spaces",
+                regex=r"^[a-zA-Z0-9-_' éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$",
+                message="Category name can only contain letters (including accented), numbers, underscores, hyphens, and spaces",
             ),
         ],
     )

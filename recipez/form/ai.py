@@ -24,8 +24,8 @@ class AICreateRecipeForm(FlaskForm):
             InputRequired(message="Please describe the recipe you want to create"),
             Length(
                 min=2,
-                max=500,
-                message="Recipe description must be between 2 and 500 characters"
+                max=1000,
+                message="Recipe description must be between 2 and 1000 characters"
             ),
         ],
     )
@@ -65,8 +65,8 @@ class AIModifyRecipeForm(FlaskForm):
             InputRequired(message="Please describe your modifications"),
             Length(
                 min=2,
-                max=500,
-                message="Modification description must be between 2 and 500 characters"
+                max=1000,
+                message="Modification description must be between 2 and 1000 characters"
             ),
         ],
     )

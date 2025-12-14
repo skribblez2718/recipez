@@ -3,7 +3,7 @@ from wtforms import (
     StringField,
     TextAreaField,
 )
-from wtforms.validators import InputRequired
+from wtforms.validators import InputRequired, Length
 
 
 ###################################[ start StepForm ]#######################################
@@ -17,7 +17,17 @@ class StepForm(FlaskForm):
     """
 
     csrf_token = StringField(None, validators=[InputRequired()])
-    step = TextAreaField("", validators=[InputRequired()])
+    step = TextAreaField(
+        "",
+        validators=[
+            InputRequired(),
+            Length(
+                min=2,
+                max=2000,
+                message="Step description must be between 2 and 2000 characters long",
+            ),
+        ],
+    )
 
 
 ###################################[ end StepForm ]#########################################

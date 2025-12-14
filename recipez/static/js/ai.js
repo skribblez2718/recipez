@@ -734,8 +734,8 @@ class AIAssistant {
             return;
         }
 
-        if (message.length > 500) {
-            this.showError('Recipe description must be 500 characters or less');
+        if (message.length > 1000) {
+            this.showError('Recipe description must be 1000 characters or less');
             return;
         }
 
@@ -812,8 +812,8 @@ class AIAssistant {
             return;
         }
 
-        if (message.length > 500) {
-            this.showError('Modification description must be 500 characters or less');
+        if (message.length > 1000) {
+            this.showError('Modification description must be 1000 characters or less');
             return;
         }
 

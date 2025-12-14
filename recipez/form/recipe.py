@@ -77,12 +77,12 @@ class BaseRecipeForm(FlaskForm):
             ),
             Length(
                 min=2,
-                max=50,
-                message="Recipe names must be between 2 and 50 characters long",
+                max=100,
+                message="Recipe names must be between 2 and 100 characters long",
             ),
             Regexp(
-                regex=r"^[0-9a-zA-Z-_()., '&]+$",
-                message="Recipe names can only contain letters, numbers, hyphens, underscores, parentheses, periods, commas, apostrophes, ampersands and spaces",
+                regex=r"^[0-9a-zA-Z-_()., '&/éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$",
+                message="Recipe names can only contain letters (including accented), numbers, hyphens, underscores, parentheses, periods, commas, apostrophes, ampersands, slashes and spaces",
             ),
         ],
     )
@@ -95,11 +95,11 @@ class BaseRecipeForm(FlaskForm):
             ),
             Length(
                 min=2,
-                max=500,
-                message="Recipe description must be between 2 and 500 characters long",
+                max=2000,
+                message="Recipe description must be between 2 and 2000 characters long",
             ),
             Regexp(
-                regex=r"^[0-9a-zA-Z-_()., '&\n\r\t!?:;]+$",
+                regex=r"^[0-9a-zA-Z-_()., '&\n\r\t!?:;#@%\"*/+=°éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$",
                 message="Recipe description contains invalid characters",
             ),
         ],

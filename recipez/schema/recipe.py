@@ -13,12 +13,12 @@ class CreateRecipeSchema(BaseModel):
 
     recipe_name: constr(
         min_length=2,
-        max_length=50,
-        pattern=r"^[0-9a-zA-Z-_()., '&]+$",
+        max_length=100,
+        pattern=r"^[0-9a-zA-Z-_()., '&/éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$",
     )
     recipe_description: constr(
         min_length=2,
-        max_length=500,
+        max_length=2000,
     )
     recipe_category_id: UUID
     recipe_image_id: UUID
@@ -49,9 +49,9 @@ class UpdateRecipeSchema(BaseModel):
 
     recipe_id: UUID
     recipe_name: (
-        constr(min_length=2, max_length=50, pattern=r"^[0-9a-zA-Z-_()., '&]+$") | None
+        constr(min_length=2, max_length=100, pattern=r"^[0-9a-zA-Z-_()., '&/éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$") | None
     ) = None
-    recipe_description: constr(min_length=2, max_length=500) | None = None
+    recipe_description: constr(min_length=2, max_length=2000) | None = None
     recipe_category_id: UUID | None = None
     recipe_image_id: UUID | None = None
 

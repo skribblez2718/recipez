@@ -100,7 +100,7 @@
 
                 <div class="form-group">
                     {{ recipe_form.description.label(class_="form-label") }}
-                    {{ recipe_form.description(class="form-control", rows=4, placeholder="Describe your recipe...") }}
+                    {{ recipe_form.description(class="form-control", rows=4, maxlength=2000, placeholder="Describe your recipe...") }}
                 </div>
             </div>
 

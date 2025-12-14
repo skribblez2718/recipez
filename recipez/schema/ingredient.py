@@ -57,7 +57,7 @@ class BaseIngredientSchema(BaseModel):
     )
     ingredient_measurement: MeasurementEnum
     ingredient_name: constr(
-        min_length=2, max_length=50, pattern=r"^[a-zA-Z0-9\s()\-°]+$", strip_whitespace=True
+        min_length=2, max_length=100, pattern=r"^[a-zA-Z0-9\s()\-°,'/%.&éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$", strip_whitespace=True
     )
 
 
