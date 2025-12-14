@@ -85,6 +85,7 @@ def _load_initial_data() -> None:
         "Japanese",
         "Thai",
         "Indian",
+        "Italian",
         "French",
         "Greek",
         "Mediterranean",

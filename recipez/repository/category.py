@@ -70,12 +70,14 @@ class CategoryRepository:
     @staticmethod
     def read_all_categories() -> List[RecipezCategoryModel]:
         """
-        Get all categories from the database.
+        Get all categories from the database, ordered alphabetically.
 
         Returns:
             List[RecipezCategoryModel]: A list of all category objects.
         """
-        return sqla_db.session.query(RecipezCategoryModel).all()
+        return sqla_db.session.query(RecipezCategoryModel).order_by(
+            RecipezCategoryModel.category_name
+        ).all()
 
     #########################[ end read_all_categories ]#########################
 
