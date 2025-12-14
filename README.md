@@ -256,3 +256,27 @@ For the bundled PostgreSQL container, use component-based configuration:
 | `DB_PASSWORD` | - | Database password (required) |
 
 For external databases, set `DATABASE_URL` directly and the component variables will be ignored.
+
+### Gmail App Password Setup
+
+Email verification requires a Gmail App Password. Regular Gmail passwords won't work due to Google's security policies.
+
+**Prerequisites:** You must have 2-Step Verification enabled on your Google account.
+
+**Steps to create an App Password:**
+
+1. Go to [Google Account Security](https://myaccount.google.com/security)
+2. Under "How you sign in to Google", click **2-Step Verification**
+3. Scroll to the bottom and click **App passwords**
+4. Enter a name for the app (e.g., "Recipez")
+5. Click **Create**
+6. Copy the 16-character password (shown with spaces, but use it without spaces)
+7. Set the `RECIPEZ_SENDER_PASSWORD` environment variable to this value
+
+**Example:**
+```bash
+# In .env or .env.docker
+RECIPEZ_SENDER_PASSWORD=abcdwxyzabcdwxyz
+```
+
+**Note:** If you don't see the "App passwords" option, ensure 2-Step Verification is enabled first.
