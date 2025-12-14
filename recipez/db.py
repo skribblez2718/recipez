@@ -12,6 +12,48 @@ from recipez.repository import (
 from recipez.utils import RecipezSecretsUtils
 
 
+# Seed categories to be created on initialization and synced on startup
+SEED_CATEGORIES = [
+    "Chinese",
+    "Japanese",
+    "Thai",
+    "Indian",
+    "Italian",
+    "French",
+    "Greek",
+    "Mediterranean",
+    "Middle Eastern",
+    "Korean",
+    "Vietnamese",
+    "Spanish",
+    "American",
+    "Cajun",
+    "Caribbean",
+    "German",
+    "British",
+    "Ethiopian",
+    "Moroccan",
+    "Brazilian",
+    "Peruvian",
+    "Hawaiian",
+    "Breakfast",
+    "Snacks",
+    "Desserts",
+    "Cakes",
+    "Cookies",
+    "Pies",
+    "Pastries",
+    "Breads",
+    "Muffins",
+    "Cocktails",
+    "Smoothies",
+    "Seasonings",
+    "Marinades",
+    "Dressings",
+    "Dog Treats",
+]
+
+
 #########################[ start delete_images ]##########################
 def delete_images() -> None:
     """
@@ -79,53 +121,10 @@ def _load_initial_data() -> None:
     # Get or create the Uncategorized fallback category (already idempotent)
     CategoryRepository.get_or_create_uncategorized(system_user_id)
 
-    # Create default categories (skip if they already exist)
-    category_names = [
-        "Chinese",
-        "Japanese",
-        "Thai",
-        "Indian",
-        "Italian",
-        "French",
-        "Greek",
-        "Mediterranean",
-        "Middle Eastern",
-        "Korean",
-        "Vietnamese",
-        "Spanish",
-        "American",
-        "Cajun",
-        "Caribbean",
-        "German",
-        "British",
-        "Ethiopian",
-        "Moroccan",
-        "Brazilian",
-        "Peruvian",
-        "Hawaiian",
-        "Breakfast",
-        "Snacks",
-        "Desserts",
-        "Cakes",
-        "Cookies",
-        "Pies",
-        "Pastries",
-        "Breads",
-        "Muffins",
-        "Cocktails",
-        "Smoothies",
-        "Seasonings",
-        "Marinades",
-        "Dressings",
-        "Dog Treats",
-    ]
-    for category_name in category_names:
-        try:
-            CategoryRepository.create_category(name=category_name, author_id=system_user_id)
-            current_app.logger.info(f"Created category: {category_name}")
-        except ValueError:
-            # Category already exists, skip silently
-            pass
+    # Sync seed categories (adds missing ones only)
+    created = CategoryRepository.sync_seed_categories(SEED_CATEGORIES, system_user_id)
+    if created > 0:
+        current_app.logger.info(f"Created {created} new seed categories")
 
 
 #########################[ end _load_initial_data ]###############

@@ -217,6 +217,18 @@ def create_app(test_config: dict = None) -> Flask:
                 app.logger.info("User table empty; creating system user...")
                 from recipez.db import _load_initial_data
                 _load_initial_data()
+            else:
+                # Sync seed categories (adds any new categories from the seed list)
+                from recipez.db import SEED_CATEGORIES
+                from recipez.repository import CategoryRepository, UserRepository
+
+                system_user = UserRepository.get_system_user()
+                if system_user:
+                    created = CategoryRepository.sync_seed_categories(
+                        SEED_CATEGORIES, system_user.user_id
+                    )
+                    if created > 0:
+                        app.logger.info(f"Synced {created} new seed categories")
 
             # Now find system user and generate JWT (always runs when table exists)
             try:

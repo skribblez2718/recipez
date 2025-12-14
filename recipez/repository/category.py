@@ -268,5 +268,45 @@ class CategoryRepository:
 
     #########################[ end get_or_create_uncategorized ]#########################
 
+    #########################[ start sync_seed_categories ]#########################
+    @staticmethod
+    def sync_seed_categories(category_names: List[str], system_user_id: str) -> int:
+        """
+        Sync seed categories - adds missing categories without affecting existing ones.
+
+        Args:
+            category_names (List[str]): List of category names that should exist.
+            system_user_id (str): The system user ID to use as author for new categories.
+
+        Returns:
+            int: Number of new categories created.
+        """
+        # Get existing category names in one query
+        existing_names = {
+            cat.category_name for cat in sqla_db.session.query(
+                RecipezCategoryModel.category_name
+            ).all()
+        }
+
+        # Find missing categories
+        missing = set(category_names) - existing_names
+
+        # Create missing categories
+        created = 0
+        for name in missing:
+            category = RecipezCategoryModel(
+                category_name=name,
+                category_author_id=system_user_id
+            )
+            sqla_db.session.add(category)
+            created += 1
+
+        if created > 0:
+            sqla_db.session.commit()
+
+        return created
+
+    #########################[ end sync_seed_categories ]#########################
+
 
 ####################################[ end CategoryRepository ]####################################
