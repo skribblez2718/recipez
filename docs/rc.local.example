@@ -1,0 +1,139 @@
+#!/bin/bash
+# =============================================================================
+# RECIPEZ AUTO-START SCRIPT FOR QUBES OS APPVM
+# =============================================================================
+# Place this file at: /rw/config/rc.local
+# Make executable: chmod +x /rw/config/rc.local
+#
+# This script runs on every AppVM boot and:
+# 1. Pulls latest code from git repository
+# 2. Creates persistent data directories
+# 3. Builds and starts Docker containers
+#
+# Prerequisites:
+# - Docker installed in TemplateVM (see README.md for package list)
+# - .env.docker file configured in persistent storage or committed to repo
+# =============================================================================
+
+set -e
+
+# =============================================================================
+# CONFIGURATION - Modify these as needed
+# =============================================================================
+RECIPEZ_REPO="https://github.com/skribblez2718/recipez.git"
+RECIPEZ_DIR="/home/user/recipez"
+RECIPEZ_DATA_DIR="/home/user/.recipez"
+LOG_FILE="/tmp/recipez-startup.log"
+USER="user"
+
+# Optional: AI service proxy (for cross-Qube LLM access)
+# Uncomment and configure if using AI features with a separate AI VM
+# AI_VM="ai-vm"
+# AI_PORT="11434"
+
+# =============================================================================
+# FUNCTIONS
+# =============================================================================
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" | tee -a "$LOG_FILE" >&2
+}
+
+run_as_user() {
+    su - "$USER" -c "$1"
+}
+
+# =============================================================================
+# MAIN SCRIPT
+# =============================================================================
+log "=== Recipez Startup Script Started ==="
+
+# Wait for network (important for Qubes networking to initialize)
+log "Waiting for network..."
+sleep 5
+
+# Verify network connectivity
+if ! ping -c 1 github.com &>/dev/null; then
+    log_error "Network not available, waiting longer..."
+    sleep 10
+    if ! ping -c 1 github.com &>/dev/null; then
+        log_error "Network still unavailable, exiting"
+        exit 1
+    fi
+fi
+
+# Clone or update repository
+if [ ! -d "$RECIPEZ_DIR" ]; then
+    log "Cloning Recipez repository..."
+    run_as_user "git clone $RECIPEZ_REPO $RECIPEZ_DIR"
+else
+    log "Updating Recipez repository..."
+    run_as_user "cd $RECIPEZ_DIR && git fetch origin && git reset --hard origin/main"
+fi
+
+# Verify .env.docker exists
+if [ ! -f "$RECIPEZ_DIR/.env.docker" ]; then
+    # Check if there's a persistent copy
+    if [ -f "$RECIPEZ_DATA_DIR/.env.docker" ]; then
+        log "Copying .env.docker from persistent storage..."
+        cp "$RECIPEZ_DATA_DIR/.env.docker" "$RECIPEZ_DIR/.env.docker"
+        chown "$USER:$USER" "$RECIPEZ_DIR/.env.docker"
+    else
+        log_error ".env.docker not found! Please create it from .env.docker.example"
+        log_error "Location: $RECIPEZ_DIR/.env.docker or $RECIPEZ_DATA_DIR/.env.docker"
+        exit 1
+    fi
+fi
+
+# Create persistent data directories
+log "Setting up data directories..."
+mkdir -p "$RECIPEZ_DATA_DIR"/{uploads,certs,pgdata}
+chmod 777 "$RECIPEZ_DATA_DIR/uploads" "$RECIPEZ_DATA_DIR/certs"
+chown 70:70 "$RECIPEZ_DATA_DIR/pgdata"
+chown -R "$USER:$USER" "$RECIPEZ_DIR"
+
+# Start Docker service
+log "Starting Docker service..."
+systemctl start docker
+sleep 3
+
+# Verify Docker is running
+if ! docker info &>/dev/null; then
+    log_error "Docker failed to start"
+    exit 1
+fi
+
+# Optional: Set up cross-Qube AI proxy
+# Uncomment if using AI features with a separate AI VM
+# if [ -n "$AI_VM" ] && [ -n "$AI_PORT" ]; then
+#     log "Setting up AI service proxy..."
+#     qvm-connect-tcp ::$AI_PORT:$AI_VM:$AI_PORT &
+# fi
+
+# Build and start containers
+log "Starting Recipez containers..."
+run_as_user "cd $RECIPEZ_DIR && ./docker-start.sh start -d"
+
+# Wait for application to be ready
+log "Waiting for application to start..."
+for i in {1..30}; do
+    if curl -s http://localhost:5000/health &>/dev/null; then
+        log "Application is ready!"
+        break
+    fi
+    sleep 2
+done
+
+# Final status check
+if curl -s http://localhost:5000/health &>/dev/null; then
+    log "=== Recipez Startup Complete ==="
+    log "Application available at http://localhost:5000"
+else
+    log_error "Application may not have started correctly"
+    log "Check logs with: docker logs recipez-app-1"
+fi
+
+exit 0

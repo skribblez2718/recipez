@@ -22,17 +22,6 @@ Recipez is a Flask-based web application for managing, organizing, and sharing r
 - **Dark Mode** - Toggle between light and dark themes
 - **Responsive Design** - Works on desktop and mobile devices
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Backend | Flask 3.1+, SQLAlchemy, Flask-Migrate |
-| Database | PostgreSQL 16 |
-| Frontend | Tailwind CSS v4, Bootstrap 5.3, Jinja2 |
-| AI | LangChain with OpenAI-compatible LLMs |
-| Production | Gunicorn, Docker |
-| Security | Argon2 password hashing, JWT, CSRF protection |
-
 ## Installation
 
 ### Prerequisites
@@ -53,7 +42,7 @@ This runs both the application and PostgreSQL database in Docker containers:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/recipez.git
+git clone https://github.com/skribblez2718/recipez.git
 cd recipez
 
 # 2. Copy and configure environment file
@@ -62,7 +51,7 @@ cp .env.docker.example .env.docker
 # 3. Edit .env.docker and set required values:
 #    - SECRET_KEY (generate with: python -c "import secrets; print(secrets.token_hex(32))")
 #    - DB_PASSWORD (generate with: python -c "import secrets; print(secrets.token_urlsafe(32))")
-#    - RECIPEZ_ENCRYPTION_KEY (generate with: python -c "import secrets; print(secrets.token_hex(32))")
+#    - RECIPEZ_ENCRYPTION_KEY (generate with: python -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(32)).decode())")
 #    - RECIPEZ_HMAC_SECRET (generate with: python -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(64)).decode())")
 
 # 4. Start the application
@@ -128,12 +117,47 @@ sudo chown 70:70 "$RECIPEZ_DATA_DIR/pgdata"
 
 #### Qubes OS Deployment
 
-For Qubes OS AppVM deployments, a separate `rc.local` script is used (not included in this repository) that:
+For Qubes OS AppVM deployments, see the example `rc.local` script in [`docs/rc.local.example`](docs/rc.local.example) which:
 - Runs on AppVM boot
 - Pulls latest code from git
 - Creates persistent directories in `/home/user/.recipez/` (survives reboots)
 - Builds and starts containers with host networking (for inter-VM communication)
 - Sets up `qvm-connect-tcp` for cross-Qube service access (e.g., AI services on another AppVM)
+
+##### Required Packages
+
+**Fedora Minimal TemplateVM:**
+
+```bash
+# In the TemplateVM (e.g., fedora-41-minimal)
+sudo dnf install -y \
+    qubes-core-agent-networking \
+    git curl \
+    docker-ce docker-ce-cli containerd.io docker-compose-plugin \
+    python3.11 python3.11-pip python3.11-devel \
+    libpq-devel gcc make
+```
+
+**Debian Minimal TemplateVM:**
+
+```bash
+# In the TemplateVM (e.g., debian-12-minimal)
+sudo apt-get update && sudo apt-get install -y \
+    qubes-core-agent-networking \
+    git curl ca-certificates \
+    docker.io docker-compose \
+    python3.11 python3.11-venv python3.11-dev \
+    libpq-dev gcc make
+```
+
+**AppVM Setup (after template packages installed):**
+
+```bash
+# Enable Docker service in AppVM
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo usermod -aG docker user
+```
 
 ---
 
@@ -157,8 +181,10 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # 5. Edit .env and set required values:
-#    - SECRET_KEY
+#    - SECRET_KEY (generate with: python -c "import secrets; print(secrets.token_hex(32))")
 #    - DATABASE_URL (e.g., postgresql+psycopg://user:pass@localhost:5432/recipez?options=-c%20search_path=recipez)
+#    - RECIPEZ_ENCRYPTION_KEY (generate with: python -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(32)).decode())")
+#    - RECIPEZ_HMAC_SECRET (generate with: python -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(64)).decode())")
 
 # 6. Set up PostgreSQL database
 #    - Create database: recipez
@@ -175,6 +201,18 @@ flask run
 ```
 
 The application will be available at `http://localhost:5000`.
+
+#### Running in Production
+
+For production deployments, use Gunicorn instead of Flask's development server:
+
+```bash
+# Activate virtual environment and start with Gunicorn
+source .venv/bin/activate
+gunicorn -c gunicorn.conf.py wsgi:app
+```
+
+Gunicorn provides better performance, multiple workers, and is suitable for production use.
 
 ---
 
@@ -218,45 +256,3 @@ For the bundled PostgreSQL container, use component-based configuration:
 | `DB_PASSWORD` | - | Database password (required) |
 
 For external databases, set `DATABASE_URL` directly and the component variables will be ignored.
-
----
-
-## Development
-
-```bash
-# Run tests
-python -m pytest
-
-# Run tests with coverage
-python -m pytest --cov=recipez tests/
-
-# Format code
-black recipez/ tests/
-
-# Database migrations
-flask db migrate -m "Description of changes"
-flask db upgrade
-```
-
----
-
-## License
-
-Recipez is dual-licensed:
-
-### AGPL-3.0 (Default)
-
-This project is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0). This means:
-
-- You can use, modify, and distribute this software freely
-- If you modify and deploy this software (including as a network service), you must release your complete source code under AGPL-3.0
-- See the [LICENSE](LICENSE) file for full terms
-
-### Commercial License
-
-A commercial license is available for organizations that:
-- Cannot comply with AGPL-3.0 requirements
-- Want to use this software in proprietary products
-- Need additional support or features
-
-For commercial licensing inquiries, please contact the maintainer.
