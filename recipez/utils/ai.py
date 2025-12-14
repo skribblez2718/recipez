@@ -81,6 +81,50 @@ class RecipezAIUtils:
         }
 
     @staticmethod
+    def _deduplicate_ingredients(ingredients: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """
+        Deduplicate ingredients by exact (name, quantity, measurement) match.
+
+        This is a 100% reliable safety net because it uses deterministic string
+        comparison. Keeps the first occurrence and discards exact duplicates.
+        Works as defense-in-depth alongside AI prompt instructions.
+
+        Args:
+            ingredients: List of ingredient dicts with name, quantity, measurement keys
+
+        Returns:
+            Deduplicated list of ingredient dicts (first occurrence preserved)
+
+        Example:
+            >>> ings = [
+            ...     {"name": "flour", "quantity": "2", "measurement": "cups"},
+            ...     {"name": "flour", "quantity": "2", "measurement": "cups"},  # duplicate
+            ...     {"name": "flour", "quantity": "1", "measurement": "cups"},  # different qty - kept
+            ... ]
+            >>> RecipezAIUtils._deduplicate_ingredients(ings)
+            [
+                {"name": "flour", "quantity": "2", "measurement": "cups"},
+                {"name": "flour", "quantity": "1", "measurement": "cups"}
+            ]
+        """
+        seen = set()
+        deduplicated = []
+
+        for ing in ingredients:
+            # Create normalized key for comparison (case-insensitive, whitespace-trimmed)
+            key = (
+                ing.get("name", "").lower().strip(),
+                ing.get("quantity", "").strip(),
+                ing.get("measurement", "").lower().strip()
+            )
+
+            if key not in seen:
+                seen.add(key)
+                deduplicated.append(ing)
+
+        return deduplicated
+
+    @staticmethod
     def create_recipe(authorization: str, request: "Request", message: str) -> Dict:
         name = "ai.create_recipe"
         response_msg = "Failed to generate recipe"
@@ -231,6 +275,9 @@ class RecipezAIUtils:
                     current_app.logger.warning(f"Invalid steps type in JSON: {type(steps)}")
                     result["parsing_errors"].append(f"Invalid steps type: {type(steps).__name__}")
 
+                # Deduplicate ingredients (100% reliable exact-match safety net)
+                result["ingredients"] = RecipezAIUtils._deduplicate_ingredients(result["ingredients"])
+
                 return result
         except (json.JSONDecodeError, ValueError):
             # Not valid JSON, continue with markdown/text parsing
@@ -304,6 +351,9 @@ class RecipezAIUtils:
             current_app.logger.warning(
                 f"Recipe parsed with {len(result['parsing_errors'])} errors: {result['parsing_errors']}"
             )
+
+        # Deduplicate ingredients (100% reliable exact-match safety net)
+        result["ingredients"] = RecipezAIUtils._deduplicate_ingredients(result["ingredients"])
 
         return result
 

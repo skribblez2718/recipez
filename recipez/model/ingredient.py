@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, ForeignKey, DateTime, text, UniqueConstraint
+from sqlalchemy import Column, String, ForeignKey, DateTime, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from recipez.extensions import sqla_db
@@ -46,16 +46,6 @@ class RecipezIngredientModel(AsDictMixin, sqla_db.Model):
     # Relationships
     author = relationship("RecipezUserModel", back_populates="ingredients")
     recipe = relationship("RecipezRecipeModel", back_populates="ingredients")
-
-    # Unique constraint to prevent duplicate ingredients in a recipe
-    __table_args__ = (
-        UniqueConstraint(
-            "ingredient_name",
-            "ingredient_quantity",
-            "ingredient_measurement",
-            "ingredient_recipe_id",
-        ),
-    )
 
 
 ###################################[ end RecipezIngredientModel ]###################################

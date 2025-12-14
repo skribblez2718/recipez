@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, ForeignKey, DateTime, Text, text
+from sqlalchemy import Column, String, ForeignKey, DateTime, Text, text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from recipez.extensions import sqla_db
@@ -12,7 +12,7 @@ class RecipezRecipeModel(AsDictMixin, sqla_db.Model):
 
     Attributes:
         recipe_id (str): Primary key for the recipe.
-        recipe_name (str): Name of the recipe, must be unique.
+        recipe_name (str): Name of the recipe, must be unique per author.
         recipe_description (str): Description of the recipe.
         recipe_category_id (str): Foreign key to the category of this recipe.
         recipe_image_id (str): Foreign key to the image of this recipe.
@@ -26,12 +26,15 @@ class RecipezRecipeModel(AsDictMixin, sqla_db.Model):
     """
 
     __tablename__ = "recipez_recipe"
-    __table_args__ = {"schema": "recipez"}
+    __table_args__ = (
+        UniqueConstraint("recipe_name", "recipe_author_id", name="uq_recipe_name_per_author"),
+        {"schema": "recipez"}
+    )
 
     recipe_id = Column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
-    recipe_name = Column(String, unique=True, nullable=False)
+    recipe_name = Column(String, nullable=False)
     recipe_description = Column(Text, nullable=False)
     recipe_category_id = Column(
         UUID(as_uuid=True),

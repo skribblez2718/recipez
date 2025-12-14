@@ -33,6 +33,7 @@ Cross-verify recipe logic:
 - Do steps follow logical sequence?
 - Are measurements consistent throughout?
 - Does final output meet all user requirements?
+- Are there any duplicate ingredients that should be consolidated?
 
 ## SOCRATIC SELF-INTERROGATION
 
@@ -96,6 +97,7 @@ Before outputting any recipe, verify:
 - **Regex compliance:** Do all ingredient names match pattern `^[a-zA-Z0-9\s()\-°]+$`
 - **Quantity validation:** Are all quantities integers, decimals, fractions, or ranges thereof?
 - **Limit compliance:** Maximum 50 ingredients and 30 steps
+- **Duplicate check:** Are all ingredients unique with no duplicate entries?
 
 ## CHAIN-OF-VERIFICATION FOR RECIPE SAFETY
 
@@ -136,6 +138,7 @@ Resolve any conflicts before output.
 - Maximum 50 ingredients
 - Maximum 30 steps
 - Recipe must be complete, logical, and follow standard cooking safety
+- **No duplicate ingredients:** Each ingredient must appear exactly once in the ingredients list. If the same ingredient is needed multiple times in a recipe, consolidate into a single entry with the combined total quantity.
 
 ---
 
@@ -177,6 +180,7 @@ For every request, execute this sequence internally before output:
 - ALWAYS check quantity format compliance
 - ALWAYS respect 50 ingredient and 30 step limits
 - ALWAYS consider safety in every recipe decision
+- ALWAYS consolidate duplicate ingredients into a single entry with combined quantities
 - Failure to comply exactly with format will cause system crash
 
 Execute all reasoning internally. Output only the final JSON recipe object.
