@@ -12,8 +12,8 @@
                 Back
             </a>
 
-            {# Action Buttons (Right) #}
-            <div class="flex gap-3">
+            {# Desktop Action Buttons (hidden on mobile) #}
+            <div class="hidden md:flex gap-3">
                 {# Share Button - Available to all logged-in users #}
                 {% if g.user %}
                     <button
@@ -50,6 +50,63 @@
                     </form>
                 {% endif %}
             </div>
+
+            {# Mobile Action Menu (visible only on mobile) #}
+            {% if g.user %}
+            <div class="md:hidden relative" id="mobile-actions-container">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="mobile-actions-toggle"
+                    aria-label="Recipe actions menu"
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                >
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                <div class="recipe-actions-menu hidden" id="mobile-actions-menu" role="menu">
+                    {# Share option - Available to all logged-in users #}
+                    <button
+                        type="button"
+                        class="recipe-actions-menu-item"
+                        id="mobile-share-recipe-btn"
+                        data-modal-target="shareRecipeModal"
+                        role="menuitem"
+                    >
+                        <i class="fa-solid fa-share-nodes text-[color:var(--accent-coral)]"></i>
+                        Share Recipe
+                    </button>
+
+                    {# Edit/Delete options - Only for recipe owner #}
+                    {% if session.get("user_id") is not none and session.get("user_id") == recipe.recipe_author_id %}
+                        <a
+                            href="{{ url_for('recipe.update_recipe_view', pk=recipe.recipe_id) }}"
+                            class="recipe-actions-menu-item"
+                            role="menuitem"
+                        >
+                            <i class="fa-solid fa-pen text-[#f59e0b]"></i>
+                            Edit Recipe
+                        </a>
+                        <button
+                            type="button"
+                            class="recipe-actions-menu-item danger"
+                            id="mobile-delete-recipe-btn"
+                            data-modal-target="confirmDeleteModal"
+                            role="menuitem"
+                        >
+                            <i class="fa-solid fa-trash"></i>
+                            Delete Recipe
+                        </button>
+                    {% endif %}
+                </div>
+                {# Hidden form for delete action (shared with mobile menu) #}
+                {% if session.get("user_id") is not none and session.get("user_id") == recipe.recipe_author_id %}
+                    <form id="mobile-delete-recipe-form" class="hidden" action="{{ url_for('recipe.delete_recipe_view', pk=recipe.recipe_id) }}" method="POST">
+                        {% if delete_form %}{{ delete_form.csrf_token }}{% endif %}
+                    </form>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
 
         {# Flash Messages #}

@@ -1772,6 +1772,63 @@
     position: relative;
     overflow: hidden;
   }
+
+  /* === Mobile Recipe Actions Menu === */
+  .recipe-actions-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1000;
+    min-width: 180px;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .recipe-actions-menu.show {
+    display: block;
+  }
+
+  .recipe-actions-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+    text-decoration: none;
+    text-align: left;
+  }
+
+  .recipe-actions-menu-item:hover {
+    background-color: var(--surface-hover);
+  }
+
+  .recipe-actions-menu-item.danger {
+    color: #ef4444;
+  }
+
+  .recipe-actions-menu-item.danger:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+
+  .light-theme .recipe-actions-menu {
+    background-color: white;
+    border-color: #e5e7eb;
+  }
+
+  .light-theme .recipe-actions-menu-item:hover {
+    background-color: #f3f4f6;
+  }
 }
 
 /* Utility Classes */

@@ -374,6 +374,61 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
         }
+
+        // Mobile actions menu toggle
+        const mobileActionsToggle = document.querySelector("#mobile-actions-toggle");
+        const mobileActionsMenu = document.querySelector("#mobile-actions-menu");
+        const mobileDeleteBtn = document.querySelector("#mobile-delete-recipe-btn");
+        const mobileDeleteForm = document.querySelector("#mobile-delete-recipe-form");
+
+        if (mobileActionsToggle && mobileActionsMenu) {
+            // Toggle menu on button click
+            mobileActionsToggle.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const isOpen = !mobileActionsMenu.classList.contains("hidden");
+
+                if (isOpen) {
+                    mobileActionsMenu.classList.add("hidden");
+                    mobileActionsMenu.classList.remove("show");
+                    mobileActionsToggle.setAttribute("aria-expanded", "false");
+                } else {
+                    mobileActionsMenu.classList.remove("hidden");
+                    mobileActionsMenu.classList.add("show");
+                    mobileActionsToggle.setAttribute("aria-expanded", "true");
+                }
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener("click", (e) => {
+                if (!mobileActionsMenu.contains(e.target) &&
+                    !mobileActionsToggle.contains(e.target)) {
+                    mobileActionsMenu.classList.add("hidden");
+                    mobileActionsMenu.classList.remove("show");
+                    mobileActionsToggle.setAttribute("aria-expanded", "false");
+                }
+            });
+
+            // Handle mobile delete button - open confirmation modal
+            if (mobileDeleteBtn && confirmDeleteModal && confirmDeleteBtn) {
+                mobileDeleteBtn.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    // Close the mobile menu first
+                    mobileActionsMenu.classList.add("hidden");
+                    mobileActionsMenu.classList.remove("show");
+                    mobileActionsToggle.setAttribute("aria-expanded", "false");
+
+                    // Show the confirmation modal
+                    showModal();
+                });
+
+                // Update confirm button to use mobile form if desktop form doesn't exist
+                if (!deleteRecipeForm && mobileDeleteForm) {
+                    confirmDeleteBtn.addEventListener("click", () => {
+                        mobileDeleteForm.submit();
+                    });
+                }
+            }
+        }
     }
 
     // Fraction conversion helper
