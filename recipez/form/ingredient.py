@@ -82,8 +82,8 @@ class IngredientForm(FlaskForm):
                 message="Ingredient name must be between 2 and 100 characters long",
             ),
             Regexp(
-                regex=r"^[a-zA-Z0-9\s()\-°,'/%.&éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$",
-                message="Ingredient name can only contain letters (including accented), numbers, hyphens, parentheses, commas, apostrophes, slashes, periods, percentages, ampersands, spaces and degree symbol",
+                regex=r"^[a-zA-Z0-9\s()\-°,'/%.&:\u2010-\u2015\u2212\u2018\u2019\u00BC-\u00BE\u2153\u2154éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$",
+                message="Ingredient name contains invalid characters",
             ),
         ],
     )

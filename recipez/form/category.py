@@ -22,8 +22,8 @@ class BaseCategoryForm(FlaskForm):
             InputRequired(),
             Length(min=2, max=50),
             Regexp(
-                regex=r"^[a-zA-Z0-9-_' éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$",
-                message="Category name can only contain letters (including accented), numbers, underscores, hyphens, and spaces",
+                regex=r"^[a-zA-Z0-9\-_' \u2010-\u2015\u2018\u2019\u2212éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$",
+                message="Category name contains invalid characters",
             ),
         ],
     )
