@@ -119,10 +119,19 @@ sudo chown 70:70 "$RECIPEZ_DATA_DIR/pgdata"
 
 For Qubes OS AppVM deployments, see the example `rc.local` script in [`docs/rc.local.example`](docs/rc.local.example) which:
 - Runs on AppVM boot
+- Configures Docker data directory for persistence across reboots
 - Pulls latest code from git
-- Creates persistent directories in `/home/user/.recipez/` (survives reboots)
-- Builds and starts containers with host networking (for inter-VM communication)
-- Sets up `qvm-connect-tcp` for cross-Qube service access (e.g., AI services on another AppVM)
+- Builds and starts PostgreSQL and app containers with host networking
+- Sets up `qvm-connect-tcp` for cross-Qube AI service access (e.g., Open WebUI on another AppVM)
+
+**Initial Setup (one-time, before first boot):**
+
+```bash
+# Create data directories in /home/user (persists across AppVM reboots)
+mkdir -p /home/user/.recipez/{uploads,certs,pgdata}
+chmod 777 /home/user/.recipez/uploads /home/user/.recipez/certs
+sudo chown 70:70 /home/user/.recipez/pgdata
+```
 
 ##### Required Packages
 

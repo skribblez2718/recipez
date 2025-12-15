@@ -6,134 +6,104 @@
 # Make executable: chmod +x /rw/config/rc.local
 #
 # This script runs on every AppVM boot and:
-# 1. Pulls latest code from git repository
-# 2. Creates persistent data directories
-# 3. Builds and starts Docker containers
+# 1. Configures Docker data directory for persistence
+# 2. Pulls latest code from git repository
+# 3. Builds and starts Docker containers with host networking
+# 4. Sets up qvm-connect-tcp for cross-Qube AI service access
 #
 # Prerequisites:
 # - Docker installed in TemplateVM (see README.md for package list)
-# - .env.docker file configured in persistent storage or committed to repo
+# - .env.docker file configured in /home/user/recipez/
 # =============================================================================
 
-set -e
+# =============================================================================
+# DOCKER CONFIGURATION
+# =============================================================================
+# Configure Docker to use persistent storage for images/containers
+echo '{"data-root": "/home/user/containers/docker-data"}' > /etc/docker/daemon.json
+
+# Remove old image to force rebuild
+docker image rm recipez:latest
 
 # =============================================================================
-# CONFIGURATION - Modify these as needed
+# RECIPEZ SETUP
 # =============================================================================
-RECIPEZ_REPO="https://github.com/skribblez2718/recipez.git"
 RECIPEZ_DIR="/home/user/recipez"
-RECIPEZ_DATA_DIR="/home/user/.recipez"
-LOG_FILE="/tmp/recipez-startup.log"
-USER="user"
+RECIPEZ_USER="user"
 
-# Optional: AI service proxy (for cross-Qube LLM access)
-# Uncomment and configure if using AI features with a separate AI VM
-# AI_VM="ai-vm"
-# AI_PORT="11434"
+# 1. Pull latest changes as user
+su - $RECIPEZ_USER -c "cd $RECIPEZ_DIR && git pull"
 
-# =============================================================================
-# FUNCTIONS
-# =============================================================================
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
-}
+# 2. Source environment variables
+set -a
+source "$RECIPEZ_DIR/.env.docker"
+set +a
 
-log_error() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" | tee -a "$LOG_FILE" >&2
-}
+# 3. Create Docker network (if not exists)
+docker network create recipez-network 2>/dev/null || true
 
-run_as_user() {
-    su - "$USER" -c "$1"
-}
+# 4. Build the app image
+docker build --no-cache --target production -t recipez:latest "$RECIPEZ_DIR"
 
-# =============================================================================
-# MAIN SCRIPT
-# =============================================================================
-log "=== Recipez Startup Script Started ==="
+# 5. Stop existing containers (if any)
+docker stop recipez-postgres recipez-app 2>/dev/null || true
+docker rm recipez-postgres recipez-app 2>/dev/null || true
 
-# Wait for network (important for Qubes networking to initialize)
-log "Waiting for network..."
-sleep 5
+# 6. Start PostgreSQL container (uses host network for app connectivity)
+docker run -d \
+  --name recipez-postgres \
+  --network host \
+  --restart unless-stopped \
+  --shm-size=128mb \
+  -e POSTGRES_USER=${DB_USER:-recipez} \
+  -e POSTGRES_PASSWORD=${DB_PASSWORD} \
+  -e POSTGRES_DB=${DB_NAME:-recipez} \
+  -v /home/user/.recipez/pgdata:/var/lib/postgresql/data \
+  -v "$RECIPEZ_DIR/init-db.sh:/docker-entrypoint-initdb.d/01-init-schema.sh:ro" \
+  postgres:16-alpine
 
-# Verify network connectivity
-if ! ping -c 1 github.com &>/dev/null; then
-    log_error "Network not available, waiting longer..."
-    sleep 10
-    if ! ping -c 1 github.com &>/dev/null; then
-        log_error "Network still unavailable, exiting"
-        exit 1
-    fi
-fi
-
-# Clone or update repository
-if [ ! -d "$RECIPEZ_DIR" ]; then
-    log "Cloning Recipez repository..."
-    run_as_user "git clone $RECIPEZ_REPO $RECIPEZ_DIR"
-else
-    log "Updating Recipez repository..."
-    run_as_user "cd $RECIPEZ_DIR && git fetch origin && git reset --hard origin/main"
-fi
-
-# Verify .env.docker exists
-if [ ! -f "$RECIPEZ_DIR/.env.docker" ]; then
-    # Check if there's a persistent copy
-    if [ -f "$RECIPEZ_DATA_DIR/.env.docker" ]; then
-        log "Copying .env.docker from persistent storage..."
-        cp "$RECIPEZ_DATA_DIR/.env.docker" "$RECIPEZ_DIR/.env.docker"
-        chown "$USER:$USER" "$RECIPEZ_DIR/.env.docker"
-    else
-        log_error ".env.docker not found! Please create it from .env.docker.example"
-        log_error "Location: $RECIPEZ_DIR/.env.docker or $RECIPEZ_DATA_DIR/.env.docker"
-        exit 1
-    fi
-fi
-
-# Create persistent data directories
-log "Setting up data directories..."
-mkdir -p "$RECIPEZ_DATA_DIR"/{uploads,certs,pgdata}
-chmod 777 "$RECIPEZ_DATA_DIR/uploads" "$RECIPEZ_DATA_DIR/certs"
-chown 70:70 "$RECIPEZ_DATA_DIR/pgdata"
-chown -R "$USER:$USER" "$RECIPEZ_DIR"
-
-# Start Docker service
-log "Starting Docker service..."
-systemctl start docker
-sleep 3
-
-# Verify Docker is running
-if ! docker info &>/dev/null; then
-    log_error "Docker failed to start"
-    exit 1
-fi
-
-# Optional: Set up cross-Qube AI proxy
-# Uncomment if using AI features with a separate AI VM
-# if [ -n "$AI_VM" ] && [ -n "$AI_PORT" ]; then
-#     log "Setting up AI service proxy..."
-#     qvm-connect-tcp ::$AI_PORT:$AI_VM:$AI_PORT &
-# fi
-
-# Build and start containers
-log "Starting Recipez containers..."
-run_as_user "cd $RECIPEZ_DIR && ./docker-start.sh start -d"
-
-# Wait for application to be ready
-log "Waiting for application to start..."
-for i in {1..30}; do
-    if curl -s http://localhost:5000/health &>/dev/null; then
-        log "Application is ready!"
-        break
-    fi
-    sleep 2
+# 7. Wait for PostgreSQL to be healthy
+echo "Waiting for PostgreSQL..."
+until docker exec recipez-postgres pg_isready -U ${DB_USER:-recipez} -d ${DB_NAME:-recipez}; do
+  sleep 2
 done
+echo "PostgreSQL is ready"
 
-# Final status check
-if curl -s http://localhost:5000/health &>/dev/null; then
-    log "=== Recipez Startup Complete ==="
-    log "Application available at http://localhost:5000"
-else
-    log_error "Application may not have started correctly"
-    log "Check logs with: docker logs recipez-app-1"
-fi
+# 8. Start Recipez app container (uses host network for AI access at 127.0.0.1:8080)
+docker run -d \
+  --name recipez-app \
+  --network host \
+  --restart unless-stopped \
+  -e FLASK_ENV=${FLASK_ENV:-production} \
+  -e DB_HOST=localhost \
+  -e DB_PORT=${DB_PORT:-5432} \
+  -e DB_USER=${DB_USER:-recipez} \
+  -e DB_PASSWORD=${DB_PASSWORD} \
+  -e DB_NAME=${DB_NAME:-recipez} \
+  -e DB_SCHEMA=${DB_SCHEMA:-recipez} \
+  -e "SECRET_KEY=${SECRET_KEY}" \
+  -e DOMAIN=${DOMAIN:-recipez.local} \
+  -e WEB_PORT=${WEB_PORT:-5000} \
+  -e RECIPEZ_JWT_ISSUER=${RECIPEZ_JWT_ISSUER:-} \
+  -e RECIPEZ_JWT_AUDIENCE=${RECIPEZ_JWT_AUDIENCE:-} \
+  -e "RECIPEZ_ENCRYPTION_KEY=${RECIPEZ_ENCRYPTION_KEY}" \
+  -e "RECIPEZ_HMAC_SECRET=${RECIPEZ_HMAC_SECRET}" \
+  -e "RECIPEZ_SENDER_PASSWORD=${RECIPEZ_SENDER_PASSWORD:-}" \
+  -e "OPENAI_API_KEY=${OPENAI_API_KEY:-}" \
+  -e OPENAI_API_BASE=${OPENAI_API_BASE:-http://127.0.0.1:8080/v1} \
+  -e OPENAI_RECIPE_MODEL_ID=${OPENAI_RECIPE_MODEL_ID:-gpt-3.5-turbo} \
+  -e OPENAI_GROCERY_MODEL_ID=${OPENAI_GROCERY_MODEL_ID:-gpt-3.5-turbo} \
+  -e INIT_DB=${INIT_DB:-false} \
+  -e DB_WAIT_TIMEOUT=${DB_WAIT_TIMEOUT:-30} \
+  -v /home/user/.recipez/uploads:/app/recipez/static/uploads \
+  -v /home/user/.recipez/certs:/app/recipez/certs \
+  recipez:latest
 
-exit 0
+echo "Recipez started on port ${APP_PORT:-5000}"
+
+# =============================================================================
+# CROSS-QUBE AI SERVICE ACCESS
+# =============================================================================
+# Forward port 8080 from another AppVM running an AI service (e.g., Open WebUI, Ollama)
+# Replace 'open-webui-appvm' with the name of your AI service AppVM
+qvm-connect-tcp 8080:open-webui-appvm:8080
