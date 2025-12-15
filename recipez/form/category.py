@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
-from wtforms.validators import InputRequired, Length, Regexp
+from wtforms.validators import InputRequired, Length
 
 
 ###################################[ start BaseCategoryForm ]###################################
@@ -21,10 +21,6 @@ class BaseCategoryForm(FlaskForm):
         validators=[
             InputRequired(),
             Length(min=2, max=50),
-            Regexp(
-                regex=r"^[a-zA-Z0-9\-_' \u2010-\u2015\u2018\u2019\u2212éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$",
-                message="Category name contains invalid characters",
-            ),
         ],
     )
 

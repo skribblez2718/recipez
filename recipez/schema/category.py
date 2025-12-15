@@ -12,7 +12,7 @@ class BaseCategorySchema(BaseModel):
         category_name (str): The name of the category.
     """
 
-    category_name: constr(min_length=2, max_length=50, pattern=r"^[a-zA-Z0-9\-_' \u2010-\u2015\u2018\u2019\u2212éèêëàâäùûüôöîïçñáíóúÉÈÊËÀÂÄÙÛÜÔÖÎÏÇÑÁÍÓÚ]+$")
+    category_name: constr(min_length=2, max_length=50)
 
 
 ###################################[ end BaseCategorySchema ]#####################################
