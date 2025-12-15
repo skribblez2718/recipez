@@ -1,3 +1,4 @@
+import re
 from base64 import b64decode
 from typing import Dict
 from uuid import UUID
@@ -10,6 +11,10 @@ from recipez.schema import CreateImageSchema, DeleteImageSchema
 from recipez.extensions import csrf
 
 bp = Blueprint("api/image", __name__, url_prefix="/api/image")
+
+# Valid filename pattern: alphanumeric, underscores, hyphens, dots
+VALID_FILENAME_PATTERN = re.compile(r'^[a-zA-Z0-9_\-\.]+$')
+VALID_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
 
 
 #########################[ start create_image_api ]##############################
@@ -28,9 +33,26 @@ def create_image_api() -> Dict:
         return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
     try:
-        image_bytes = b64decode(data.image_data)
-        Path(data.image_path).write_bytes(image_bytes)
+        # Extract just the filename (handles both full paths and simple filenames)
         filename = Path(data.image_path).name
+
+        # Validate filename for security
+        if not VALID_FILENAME_PATTERN.match(filename):
+            raise ValueError(f"Invalid filename: {filename}")
+
+        # Validate file extension
+        ext = Path(filename).suffix.lower()
+        if ext not in VALID_IMAGE_EXTENSIONS:
+            raise ValueError(f"Invalid image extension: {ext}")
+
+        # Construct the full upload path using the app's static/uploads directory
+        upload_dir = Path(current_app.root_path) / "static" / "uploads"
+        full_path = upload_dir / filename
+
+        # Decode and write the image
+        image_bytes = b64decode(data.image_data)
+        full_path.write_bytes(image_bytes)
+
         image_url = url_for("static", filename=f"uploads/{filename}", _external=False)
         image = ImageRepository.create_image(image_url, str(data.author_id))
     except Exception as e:

@@ -2303,7 +2303,11 @@ components:
           description: Base64-encoded image data
         image_path:
           type: string
-          description: File path where image will be stored
+          pattern: "^[a-zA-Z0-9_\\-\\.]+$"
+          description: |
+            Filename for the uploaded image (e.g., "recipe-image.jpg").
+            Will be saved to the server's uploads directory automatically.
+            Must have .jpg, .jpeg, or .png extension.
         author_id:
           type: string
           format: uuid
