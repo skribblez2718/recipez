@@ -1,6 +1,6 @@
 from typing import Dict, List
 from uuid import UUID
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
 from recipez.utils import RecipezAuthNUtils, RecipezAuthZUtils, RecipezErrorUtils
 from recipez.repository import IngredientRepository
@@ -28,9 +28,13 @@ def create_ingredients_api() -> Dict:
     try:
         data = CreateIngredientSchema(**request.json)
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        return RecipezErrorUtils.handle_validation_error(
+            name, request, e, "Invalid ingredient data. Please check all required fields."
+        )
 
     created_ingredients: List[Dict] = []
+    # Use provided author_id or fall back to authenticated user's ID
+    author_id = str(data.author_id) if data.author_id else str(g.user.user_id)
     try:
         for ingredient in data.ingredients:
             created_ingredient = IngredientRepository.create_ingredient(
@@ -38,7 +42,7 @@ def create_ingredients_api() -> Dict:
                 ingredient.ingredient_quantity,
                 ingredient.ingredient_measurement,
                 str(data.recipe_id),
-                str(data.author_id),
+                author_id,
             )
             created_ingredients.append(created_ingredient.as_dict())
     except Exception as e:
@@ -58,18 +62,23 @@ def create_ingredients_api() -> Dict:
 def read_ingredients_api(pk: str) -> Dict:
     """Read a single ingredient."""
     name = "ingredient.read_ingredients_api"
-    response_msg = "Ingredient not found"
     try:
         data = ReadIngredientSchema(ingredient_id=pk)
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        return RecipezErrorUtils.handle_validation_error(
+            name, request, e, "Invalid ingredient ID format"
+        )
 
     try:
         ingredient = IngredientRepository.read_ingredient_by_id(str(data.ingredient_id))
         if not ingredient:
-            return jsonify({"response": {"error": response_msg}})
+            return RecipezErrorUtils.handle_not_found_error(
+                name, request, "Ingredient not found"
+            )
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        return RecipezErrorUtils.handle_api_error(
+            name, request, e, "Unable to retrieve ingredient"
+        )
 
     return jsonify({"response": {"ingredient": ingredient.as_dict()}})
 

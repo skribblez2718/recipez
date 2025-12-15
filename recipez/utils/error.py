@@ -137,7 +137,11 @@ class RecipezErrorUtils:
     #########################[ start handle_api_error ]########################
     @staticmethod
     def handle_api_error(
-        name: str, request: Request, error: Exception | str, response_msg: str
+        name: str,
+        request: Request,
+        error: Exception | str,
+        response_msg: str,
+        status_code: int = 500,
     ) -> tuple[Response, int]:
         """Log an API error and return a standardized JSON response for API endpoints.
 
@@ -149,12 +153,71 @@ class RecipezErrorUtils:
             request: The current request object.
             error: Exception instance or error string.
             response_msg: User facing error message.
+            status_code: HTTP status code to return (default 500).
 
         Returns:
             A tuple containing the JSON error payload and HTTP status code.
         """
         RecipezErrorUtils.log_error(name, error, request)
-        return jsonify({"response": {"error": response_msg}}), 500
+        return jsonify({"response": {"error": response_msg}}), status_code
+
+    #########################[ end handle_api_error ]########################
+
+    #########################[ start handle_validation_error ]########################
+    @staticmethod
+    def handle_validation_error(
+        name: str, request: Request, error: Exception | str, response_msg: str
+    ) -> tuple[Response, int]:
+        """Handle validation errors (400 Bad Request).
+
+        Use for: invalid input format, schema validation failures, missing fields.
+        """
+        RecipezErrorUtils.log_error(name, error, request)
+        return jsonify({"response": {"error": response_msg}}), 400
+
+    #########################[ end handle_validation_error ]########################
+
+    #########################[ start handle_not_found_error ]########################
+    @staticmethod
+    def handle_not_found_error(
+        name: str, request: Request, response_msg: str = "Resource not found"
+    ) -> tuple[Response, int]:
+        """Handle not found errors (404 Not Found).
+
+        Use for: requested resource does not exist.
+        """
+        RecipezErrorUtils.log_error(name, f"Not found: {response_msg}", request)
+        return jsonify({"response": {"error": response_msg}}), 404
+
+    #########################[ end handle_not_found_error ]########################
+
+    #########################[ start handle_conflict_error ]########################
+    @staticmethod
+    def handle_conflict_error(
+        name: str, request: Request, error: Exception | str, response_msg: str
+    ) -> tuple[Response, int]:
+        """Handle conflict errors (409 Conflict).
+
+        Use for: duplicate resources, conflicting state.
+        """
+        RecipezErrorUtils.log_error(name, error, request)
+        return jsonify({"response": {"error": response_msg}}), 409
+
+    #########################[ end handle_conflict_error ]########################
+
+    #########################[ start handle_forbidden_error ]########################
+    @staticmethod
+    def handle_forbidden_error(
+        name: str, request: Request, response_msg: str = "Access denied"
+    ) -> tuple[Response, int]:
+        """Handle forbidden errors (403 Forbidden).
+
+        Use for: authorization failures, permission denied.
+        """
+        RecipezErrorUtils.log_error(name, f"Forbidden: {response_msg}", request)
+        return jsonify({"response": {"error": response_msg}}), 403
+
+    #########################[ end handle_forbidden_error ]########################
 
     #########################[ end handle_api_error ]########################
 

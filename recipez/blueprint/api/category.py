@@ -38,17 +38,21 @@ def create_category_api() -> Dict[str, List[Dict[str, int]]]:
     try:
         data: CreateCategorySchema = CreateCategorySchema(**request.json)
     except Exception as e:
-        response_msg = "Invalid category format."
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        response_msg = "Invalid category format"
+        return RecipezErrorUtils.handle_validation_error(name, request, e, response_msg)
 
+    # Use provided author_id or fall back to authenticated user's ID
+    author_id = str(data.author_id) if data.author_id else str(g.user.user_id)
     try:
         category = CategoryRepository.create_category(
-            data.category_name, data.author_id
+            data.category_name, author_id
         )
     except ValueError as e:
         if "already exists" in str(e).lower():
-            response_msg = f"Category with name '{data.category_name}' already exists"
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+            response_msg = "A category with this name already exists"
+            return RecipezErrorUtils.handle_conflict_error(name, request, e, response_msg)
+        response_msg = "Invalid category data"
+        return RecipezErrorUtils.handle_validation_error(name, request, e, response_msg)
     except Exception as e:
         return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
@@ -71,30 +75,25 @@ def create_category_api() -> Dict[str, List[Dict[str, int]]]:
 @RecipezAuthZUtils.category_read_required
 def read_category_api(pk: str):
     name = f"category.{read_category_api.__name__}"
-    category_error = "An error occurred while retrieving the category"
 
     try:
         data: ReadCategorySchema = ReadCategorySchema(**{"category_id": UUID(pk)})
     except Exception as e:
-        category_error = "Invalid category id."
-        return RecipezErrorUtils.handle_api_error(name, request, e, category_error)
+        return RecipezErrorUtils.handle_validation_error(
+            name, request, e, "Invalid category ID format"
+        )
 
     category_id = data.category_id
     try:
         category = CategoryRepository.read_category_by_id(category_id)
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, category_error)
+        return RecipezErrorUtils.handle_api_error(
+            name, request, e, "Unable to retrieve category"
+        )
 
     if not category:
-        return jsonify(
-            {
-                "response": {
-                    "category_id": "",
-                    "category_name": "",
-                    "category_author_id": "",
-                    "created_at": "",
-                }
-            }
+        return RecipezErrorUtils.handle_not_found_error(
+            name, request, "Category not found"
         )
 
     return jsonify({"response": {"category": category.as_dict()}})

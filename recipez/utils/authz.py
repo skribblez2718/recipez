@@ -640,6 +640,44 @@ class RecipezAuthZUtils:
 
     #########################[ end ai_grocery_list_required ]###################
 
+    #########################[ start user_create_required ]#################
+    @staticmethod
+    def user_create_required(
+        view_func: Callable[..., WerkzeugResponse]
+    ) -> Callable[..., WerkzeugResponse]:
+        """
+        Decorator to ensure that the request has the 'user:create' scope.
+        This is a system-level scope, only available to the system user (yeschef).
+
+        Args:
+            view_func (Callable[..., WerkzeugResponse]): The view function to protect.
+
+        Returns:
+            Callable[..., WerkzeugResponse]: A wrapped view function enforcing scope validation.
+        """
+        return RecipezAuthZUtils.scope_required("user:create")(view_func)
+
+    #########################[ end user_create_required ]###################
+
+    #########################[ start user_read_required ]#################
+    @staticmethod
+    def user_read_required(
+        view_func: Callable[..., WerkzeugResponse]
+    ) -> Callable[..., WerkzeugResponse]:
+        """
+        Decorator to ensure that the request has the 'user:read' scope.
+        This is a system-level scope, only available to the system user (yeschef).
+
+        Args:
+            view_func (Callable[..., WerkzeugResponse]): The view function to protect.
+
+        Returns:
+            Callable[..., WerkzeugResponse]: A wrapped view function enforcing scope validation.
+        """
+        return RecipezAuthZUtils.scope_required("user:read")(view_func)
+
+    #########################[ end user_read_required ]###################
+
     #########################[ start owner_required ]#########################
     @staticmethod
     def owner_required(

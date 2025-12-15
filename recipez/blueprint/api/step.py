@@ -1,5 +1,5 @@
 from typing import Dict, List
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
 from recipez.utils import RecipezAuthNUtils, RecipezAuthZUtils, RecipezErrorUtils
 from recipez.repository import StepRepository
@@ -26,15 +26,19 @@ def create_steps_api() -> Dict:
     try:
         data = CreateStepsSchema(**request.json)
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        return RecipezErrorUtils.handle_validation_error(
+            name, request, e, "Invalid step data. Please check all required fields."
+        )
 
     created_steps: List[Dict] = []
+    # Use provided author_id or fall back to authenticated user's ID
+    author_id = str(data.author_id) if data.author_id else str(g.user.user_id)
     try:
         for step in data.steps:
             created_step = StepRepository.create_step(
                 step.step_description,
                 str(data.recipe_id),
-                str(data.author_id),
+                author_id,
             )
             created_steps.append(created_step.as_dict())
     except Exception as e:
@@ -59,30 +63,19 @@ def read_steps_api(pk: str) -> Dict:
     try:
         data = ReadStepsSchema(recipe_id=pk)
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        return RecipezErrorUtils.handle_validation_error(
+            name, request, e, "Invalid recipe ID format"
+        )
 
     try:
         steps = StepRepository.read_steps_by_recipe_id(str(data.recipe_id))
         if not steps:
-            return jsonify(
-                {
-                    "response": {
-                        "steps": [
-                            {
-                                "step_id": "",
-                                "step_text": "",
-                                "step_author_id": "",
-                                "step_recipe_id": "",
-                                "created_at": "",
-                            }
-                        ]
-                    }
-                }
-            )
+            return jsonify({"response": {"steps": []}})
+        all_steps = [step.as_dict() for step in steps]
     except Exception as e:
         return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
-    return jsonify({"response": {"steps": steps}})
+    return jsonify({"response": {"steps": all_steps}})
 
 
 #########################[ end read_steps_api ]##################################
@@ -103,7 +96,9 @@ def update_steps_api(pk: str) -> Dict:
     try:
         data = UpdateStepsSchema(**json_data)
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        return RecipezErrorUtils.handle_validation_error(
+            name, request, e, "Invalid step data"
+        )
 
     try:
         updated = StepRepository.update_step(str(data.step_id), data.step_description)
@@ -129,7 +124,9 @@ def delete_steps_api(pk: str) -> Dict:
     try:
         data = DeleteStepSchema(step_id=pk)
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        return RecipezErrorUtils.handle_validation_error(
+            name, request, e, "Invalid step ID format"
+        )
 
     try:
         deleted = StepRepository.delete_step(str(data.step_id))

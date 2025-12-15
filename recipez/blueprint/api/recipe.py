@@ -40,19 +40,27 @@ def create_recipe_api() -> Dict:
     try:
         data = CreateRecipeSchema(**request.json)
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        return RecipezErrorUtils.handle_validation_error(
+            name, request, e, "Invalid recipe data. Please check all required fields."
+        )
     try:
+        # Use provided author_id or fall back to authenticated user's ID
+        author_id = str(data.recipe_author_id) if data.recipe_author_id else str(g.user.user_id)
         recipe = RecipeRepository.create_recipe(
             data.recipe_name,
             data.recipe_description,
             str(data.recipe_category_id),
             str(data.recipe_image_id),
-            str(data.recipe_author_id),
+            author_id,
         )
     except ValueError as e:
-        if "aleady exists" in str(e).lower():
-            response_msg = f"Recipe with name '{data.recipe_name}' already exists"
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        if "already exists" in str(e).lower():
+            return RecipezErrorUtils.handle_conflict_error(
+                name, request, e, "A recipe with this name already exists"
+            )
+        return RecipezErrorUtils.handle_validation_error(
+            name, request, e, "Invalid recipe data"
+        )
     except Exception as e:
         return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
@@ -160,18 +168,23 @@ def read_recipes_api() -> Dict:
 def read_recipe_api(pk: str) -> Dict:
     """Return a single recipe by id."""
     name = "recipe.read_recipe_api"
-    response_msg = "Recipe not found"
     try:
         data = ReadRecipeSchema(recipe_id=pk)
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        return RecipezErrorUtils.handle_validation_error(
+            name, request, e, "Invalid recipe ID format"
+        )
     try:
         recipe = RecipeRepository.get_recipe_by_id(str(data.recipe_id))
-        recipe = recipe.as_dict()
         if not recipe:
-            return jsonify({"response": {"error": response_msg}})
+            return RecipezErrorUtils.handle_not_found_error(
+                name, request, "Recipe not found"
+            )
+        recipe = recipe.as_dict()
     except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        return RecipezErrorUtils.handle_api_error(
+            name, request, e, "Unable to retrieve recipe"
+        )
 
     try:
         category_id = recipe.get("recipe_category_id", "")

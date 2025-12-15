@@ -1828,7 +1828,6 @@ components:
         - recipe_description
         - recipe_category_id
         - recipe_image_id
-        - recipe_author_id
       properties:
         recipe_name:
           type: string
@@ -1848,6 +1847,8 @@ components:
         recipe_author_id:
           type: string
           format: uuid
+          description: |
+            Optional. If omitted, uses the authenticated user's ID.
 
     UpdateRecipeRequest:
       type: object
@@ -1973,7 +1974,6 @@ components:
       type: object
       required:
         - category_name
-        - author_id
       properties:
         category_name:
           type: string
@@ -1983,6 +1983,8 @@ components:
         author_id:
           type: string
           format: uuid
+          description: |
+            Optional. If omitted, uses the authenticated user's ID.
 
     UpdateCategoryRequest:
       type: object
@@ -2145,7 +2147,6 @@ components:
       type: object
       required:
         - recipe_id
-        - author_id
         - ingredients
       properties:
         recipe_id:
@@ -2154,6 +2155,8 @@ components:
         author_id:
           type: string
           format: uuid
+          description: |
+            Optional. If omitted, uses the authenticated user's ID.
         ingredients:
           type: array
           items:
@@ -2229,7 +2232,6 @@ components:
       type: object
       required:
         - recipe_id
-        - author_id
         - steps
       properties:
         recipe_id:
@@ -2238,6 +2240,8 @@ components:
         author_id:
           type: string
           format: uuid
+          description: |
+            Optional. If omitted, uses the authenticated user's ID.
         steps:
           type: array
           items:
@@ -2295,7 +2299,6 @@ components:
       required:
         - image_data
         - image_path
-        - author_id
       properties:
         image_data:
           type: string
@@ -2311,6 +2314,8 @@ components:
         author_id:
           type: string
           format: uuid
+          description: |
+            Optional. If omitted, uses the authenticated user's ID.
 
     ImageResponse:
       type: object

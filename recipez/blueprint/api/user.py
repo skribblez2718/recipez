@@ -3,7 +3,7 @@ import re
 from flask import Blueprint, request, jsonify
 
 from recipez.schema import CreateUserSchema, ReadUserByEmailSchema
-from recipez.utils import RecipezErrorUtils, RecipezSecretsUtils
+from recipez.utils import RecipezAuthNUtils, RecipezAuthZUtils, RecipezErrorUtils, RecipezSecretsUtils
 from recipez.repository import UserRepository
 from recipez.dataclass import User
 from dataclasses import asdict
@@ -15,6 +15,8 @@ bp = Blueprint("api/user", __name__, url_prefix="/api/user")
 #########################[ start add_user_api ]#########################
 @bp.route("/create", methods=["POST"])
 @csrf.exempt  # Exempt from CSRF protection - protected by JWT authentication
+@RecipezAuthNUtils.jwt_required
+@RecipezAuthZUtils.user_create_required
 def create_user_api() -> "Response":
     """
     Adds a new user to the database if they don't already exist.
@@ -68,6 +70,8 @@ def create_user_api() -> "Response":
 #########################[ start read_user_by_email_api ]#########################
 @bp.route("/read/email", methods=["POST"])
 @csrf.exempt  # Exempt from CSRF protection - protected by JWT authentication
+@RecipezAuthNUtils.jwt_required
+@RecipezAuthZUtils.user_read_required
 def read_user_by_email_api() -> "Response":
     """
     Adds a new user to the database if they don't already exist.

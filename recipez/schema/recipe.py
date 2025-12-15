@@ -1,4 +1,5 @@
 from pydantic import BaseModel, constr
+from typing import Optional
 from uuid import UUID
 
 
@@ -22,7 +23,7 @@ class CreateRecipeSchema(BaseModel):
     )
     recipe_category_id: UUID
     recipe_image_id: UUID
-    recipe_author_id: UUID
+    recipe_author_id: Optional[UUID] = None
 
 
 ###################################[ end ReadRecipeSchema ]#######################################

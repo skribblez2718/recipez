@@ -1,4 +1,5 @@
 from pydantic import BaseModel, constr
+from typing import Optional
 from uuid import UUID
 
 
@@ -23,10 +24,11 @@ class CreateCategorySchema(BaseCategorySchema):
     Schema for validating category creation.
 
     Attributes:
-        author_id (UUID): The ID of the author.
+        author_id (UUID, optional): The ID of the author.
+            If omitted, uses the authenticated user's ID.
     """
 
-    author_id: UUID
+    author_id: Optional[UUID] = None
 
 
 ###################################[ end CreateCategorySchema ]#####################################

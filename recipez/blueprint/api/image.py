@@ -3,7 +3,7 @@ from base64 import b64decode
 from typing import Dict
 from uuid import UUID
 from pathlib import Path
-from flask import Blueprint, jsonify, request, url_for, current_app
+from flask import Blueprint, g, jsonify, request, url_for, current_app
 
 from recipez.utils import RecipezAuthNUtils, RecipezAuthZUtils, RecipezErrorUtils
 from recipez.repository import ImageRepository
@@ -54,7 +54,9 @@ def create_image_api() -> Dict:
         full_path.write_bytes(image_bytes)
 
         image_url = url_for("static", filename=f"uploads/{filename}", _external=False)
-        image = ImageRepository.create_image(image_url, str(data.author_id))
+        # Use provided author_id or fall back to authenticated user's ID
+        author_id = str(data.author_id) if data.author_id else str(g.user.user_id)
+        image = ImageRepository.create_image(image_url, author_id)
     except Exception as e:
         return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
