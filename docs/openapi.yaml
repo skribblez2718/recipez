@@ -43,7 +43,7 @@ tags:
   - name: Image
     description: Image upload and management
   - name: AI
-    description: AI-powered recipe generation and speech-to-text
+    description: AI-powered recipe generation and modification
   - name: Grocery
     description: AI-organized grocery list generation
   - name: Email
@@ -998,48 +998,6 @@ paths:
           description: AI service error or empty response
         '504':
           description: AI service timeout
-
-  /api/ai/stt:
-    post:
-      tags:
-        - AI
-      summary: Speech-to-text transcription
-      description: |
-        Transcribe audio to text using OpenAI Whisper.
-        Requires `ai:speech-to-text` scope.
-        Maximum file size: 25MB.
-        Supported formats: audio/mpeg, audio/mp3, audio/wav, audio/x-wav, audio/mp4, audio/x-m4a, audio/webm, audio/flac
-      operationId: aiSpeechToText
-      security:
-        - bearerAuth: [ai:speech-to-text]
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - audio
-              properties:
-                audio:
-                  type: string
-                  format: binary
-                  description: Audio file to transcribe
-      responses:
-        '200':
-          description: Audio transcribed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AISTTResponse'
-        '400':
-          description: No audio file provided, unsupported format, or file too large
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '500':
-          $ref: '#/components/responses/InternalError'
 
   # ==================== GROCERY ENDPOINTS ====================
   /api/grocery/send:
@@ -2363,16 +2321,6 @@ components:
             recipe:
               type: string
               description: AI-generated recipe content (markdown or JSON)
-
-    AISTTResponse:
-      type: object
-      properties:
-        response:
-          type: object
-          properties:
-            transcription:
-              type: string
-              description: Transcribed text from audio
 
     # ==================== GROCERY SCHEMAS ====================
     GrocerySendRequest:
