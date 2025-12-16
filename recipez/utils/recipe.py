@@ -219,7 +219,6 @@ class RecipezRecipeUtils:
     def create_recipe_category(
         authorization: str,
         request: "Request",
-        author_id: str,
         category_name: str,
         create_category_form=None,
     ) -> Dict[str, Union[bool, Dict[str, str]]]:
@@ -229,7 +228,6 @@ class RecipezRecipeUtils:
         Args:
             authorization (str): The authorization token.
             request (Request): The request object.
-            author_id (str): The ID of the author.
             category_name (str): The name of the category to create.
             create_category_form: The category form, if provided.
 
@@ -254,7 +252,6 @@ class RecipezRecipeUtils:
                 response = RecipezCategoryUtils.create_category(
                     authorization=authorization,
                     request=request,
-                    author_id=author_id,
                     category_name=category_name,
                 )
             except Exception as e:
@@ -297,7 +294,6 @@ class RecipezRecipeUtils:
     def create_recipe_image(
         authorization: str,
         request: "Request",
-        author_id: str,
         image_data=None,
     ) -> Dict[str, Union[bool, Dict[str, str]]]:
         """
@@ -306,7 +302,6 @@ class RecipezRecipeUtils:
         Args:
             authorization (str): The authorization token.
             request (Request): The request object.
-            author_id (str): The ID of the author.
             image_data: The image data, if provided.
 
         Returns:
@@ -327,14 +322,12 @@ class RecipezRecipeUtils:
             )
             with open(default_img_path, "rb") as f:
                 image_data = f.read()
-            # Issue 8 (MEDIUM): Sanitized logging - removed sensitive author_id from logs
             current_app.logger.info("Using default recipe image")
 
         try:
             response = RecipezImageUtils.create_image(
                 authorization=authorization,
                 request=request,
-                author_id=author_id,
                 image_data=image_data,
             )
         except Exception as e:
@@ -361,7 +354,6 @@ class RecipezRecipeUtils:
         recipe_description: str,
         recipe_category_id: str,
         recipe_image_id: str,
-        recipe_author_id: str,
     ) -> Dict[str, Union[bool, Dict[str, str]]]:
         """
         Creates a new recipe.
@@ -373,7 +365,6 @@ class RecipezRecipeUtils:
             recipe_description (str): The description of the recipe.
             recipe_category_id (str): The ID of the category.
             recipe_image_id (str): The ID of the image.
-            recipe_author_id (str): The ID of the author.
 
         Returns:
             Dict[str, Union[bool, Dict[str, str]]]: A dictionary containing:
@@ -394,7 +385,6 @@ class RecipezRecipeUtils:
                     "recipe_description": recipe_description,
                     "recipe_category_id": str(recipe_category_id),
                     "recipe_image_id": str(recipe_image_id) if recipe_image_id else None,
-                    "recipe_author_id": str(recipe_author_id),
                 },
             )
         except Exception as e:
@@ -420,7 +410,6 @@ class RecipezRecipeUtils:
     def create_recipe_ingredients(
         authorization: str,
         request: "Request",
-        author_id: str,
         recipe_id: str,
         ingredient_forms,
     ) -> Dict[str, Union[bool, List[Dict[str, str]]]]:
@@ -430,7 +419,6 @@ class RecipezRecipeUtils:
         Args:
             authorization (str): The authorization token.
             request (Request): The request object.
-            author_id (str): The ID of the author.
             recipe_id (str): The ID of the recipe.
             ingredient_forms: The ingredient form entries.
 
@@ -458,7 +446,6 @@ class RecipezRecipeUtils:
                 authorization=authorization,
                 request=request,
                 ingredients=recipe_ingredients,
-                author_id=author_id,
                 recipe_id=recipe_id,
             )
         except Exception as e:
@@ -481,7 +468,6 @@ class RecipezRecipeUtils:
     def create_recipe_steps(
         authorization: str,
         request: "Request",
-        author_id: str,
         recipe_id: str,
         step_forms,
     ) -> Dict[str, Union[bool, List[Dict[str, str]]]]:
@@ -491,7 +477,6 @@ class RecipezRecipeUtils:
         Args:
             authorization (str): The authorization token.
             request (Request): The request object.
-            author_id (str): The ID of the author.
             recipe_id (str): The ID of the recipe.
             step_forms: The step form entries.
 
@@ -517,7 +502,6 @@ class RecipezRecipeUtils:
                 authorization=authorization,
                 request=request,
                 steps=recipe_steps,
-                author_id=author_id,
                 recipe_id=recipe_id,
             )
         except Exception as e:
@@ -673,12 +657,10 @@ class RecipezRecipeUtils:
                     name, request, response_msg, response_msg
                 )
 
-            from flask import session
             try:
                 response = RecipezCategoryUtils.create_category(
                     authorization=authorization,
                     request=request,
-                    author_id=session.get("user_id", ""),
                     category_name=category_name,
                 )
             except Exception as e:
@@ -763,12 +745,10 @@ class RecipezRecipeUtils:
                 old_image_url = old_image.image_url
 
         # Create new image
-        from flask import session
         try:
             response = RecipezImageUtils.create_image(
                 authorization=authorization,
                 request=request,
-                author_id=session.get("user_id", ""),
                 image_data=image_data,
             )
         except Exception as e:
@@ -896,7 +876,6 @@ class RecipezRecipeUtils:
                         authorization=authorization,
                         request=request,
                         ingredients=[ingredient_data],
-                        author_id=session.get("user_id", ""),
                         recipe_id=recipe_id,
                     )
 
@@ -1010,7 +989,6 @@ class RecipezRecipeUtils:
                         authorization=authorization,
                         request=request,
                         steps=[step_data],
-                        author_id=session.get("user_id", ""),
                         recipe_id=recipe_id,
                     )
 

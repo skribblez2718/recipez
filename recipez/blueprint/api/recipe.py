@@ -45,8 +45,8 @@ def create_recipe_api() -> Dict:
             name, request, e, "Invalid recipe data. Please check all required fields."
         )
     try:
-        # Use provided author_id or fall back to authenticated user's ID
-        author_id = str(data.recipe_author_id) if data.recipe_author_id else str(g.user.user_id)
+        # Always use authenticated user's ID (never accept client-provided author_id)
+        author_id = str(g.user.user_id)
         recipe = RecipeRepository.create_recipe(
             data.recipe_name,
             data.recipe_description,

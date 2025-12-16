@@ -27,7 +27,6 @@ class RecipezIngredientUtils:
         authorization: str,
         request: "Request",
         ingredients: List[Dict[str, str]],
-        author_id: str,
         recipe_id: str,
     ) -> List[Dict[str, str]]:
         """
@@ -36,9 +35,8 @@ class RecipezIngredientUtils:
         Args:
             authorization (str): The authorization token.
             request (Request): The request object.
-            author_id (str): The ID of the author.
-            recipe_id (str): The ID of the recipe.
             ingredients (List[Dict[str, str]]): The ingredients to create.
+            recipe_id (str): The ID of the recipe.
 
         Returns:
             List[Dict[str, str]]: A list of ingredients.
@@ -47,7 +45,6 @@ class RecipezIngredientUtils:
         response_msg = "An error occurred while creating the ingredient"
         request_json = {
             "ingredients": ingredients,
-            "author_id": author_id,
             "recipe_id": recipe_id,
         }
 

@@ -67,8 +67,8 @@ def create_image_api() -> Dict:
         full_path.write_bytes(image_bytes)
 
         image_url = url_for("static", filename=f"uploads/{filename}", _external=False)
-        # Use provided author_id or fall back to authenticated user's ID
-        author_id = str(data.author_id) if data.author_id else str(g.user.user_id)
+        # Always use authenticated user's ID (never accept client-provided author_id)
+        author_id = str(g.user.user_id)
         image = ImageRepository.create_image(image_url, author_id)
     except Exception as e:
         return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)

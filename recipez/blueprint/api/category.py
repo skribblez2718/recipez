@@ -41,8 +41,8 @@ def create_category_api() -> Dict[str, List[Dict[str, int]]]:
         response_msg = "Invalid category format"
         return RecipezErrorUtils.handle_validation_error(name, request, e, response_msg)
 
-    # Use provided author_id or fall back to authenticated user's ID
-    author_id = str(data.author_id) if data.author_id else str(g.user.user_id)
+    # Always use authenticated user's ID (never accept client-provided author_id)
+    author_id = str(g.user.user_id)
     try:
         category = CategoryRepository.create_category(
             data.category_name, author_id

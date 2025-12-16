@@ -1,16 +1,20 @@
-from pydantic import BaseModel, constr
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, constr
 from uuid import UUID
 
 
 ###################################[ start CreateRecipeSchema ]#####################################
 class CreateRecipeSchema(BaseModel):
     """
-    Schema for validating email-based login initiation.
+    Schema for validating recipe creation.
 
     Attributes:
-        recipe_id (UUID): A valid recipe_id
+        recipe_name (str): Name of the recipe (2-100 characters)
+        recipe_description (str): Description of the recipe (2-2000 characters)
+        recipe_category_id (UUID): The category ID for the recipe
+        recipe_image_id (UUID): The image ID for the recipe
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     recipe_name: constr(min_length=2, max_length=100)
     recipe_description: constr(
@@ -19,7 +23,6 @@ class CreateRecipeSchema(BaseModel):
     )
     recipe_category_id: UUID
     recipe_image_id: UUID
-    recipe_author_id: Optional[UUID] = None
 
 
 ###################################[ end ReadRecipeSchema ]#######################################

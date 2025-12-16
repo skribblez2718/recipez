@@ -1,5 +1,4 @@
-from pydantic import BaseModel, field_validator
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, field_validator
 from uuid import UUID
 import re
 
@@ -45,13 +44,12 @@ class CreateImageSchema(BaseImageSchema):
     Schema for creating an image.
 
     Attributes:
-        author_id (UUID, optional): The ID of the author uploading the image.
-            If omitted, uses the authenticated user's ID.
-        image_path (str): The filename for the image (e.g., "recipe-image.jpg").
-        image_data (str): The base64-encoded image data.
+        image_path (str): The filename for the image (e.g., "recipe-image.jpg")
+        image_data (str): The base64-encoded image data
     """
 
-    author_id: Optional[UUID] = None
+    model_config = ConfigDict(extra="forbid")
+
     image_data: str
 
 

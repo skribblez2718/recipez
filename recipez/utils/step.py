@@ -14,13 +14,12 @@ from recipez.schema import UpdateStepsSchema, DeleteStepSchema
 class RecipezStepUtils:
     """ """
 
-    #########################[ start create_ingredient ]#############################
+    #########################[ start create_steps ]#############################
     @staticmethod
     def create_steps(
         authorization: str,
         request: "Request",
         steps: List[Dict[str, str]],
-        author_id: str,
         recipe_id: str,
     ) -> List[Dict[str, str]]:
         """
@@ -30,7 +29,6 @@ class RecipezStepUtils:
             authorization (str): The authorization token.
             request (Request): The request object.
             steps (List[Dict[str, str]]): The steps to create.
-            author_id (str): The ID of the author.
             recipe_id (str): The ID of the recipe.
 
         Returns:
@@ -41,7 +39,6 @@ class RecipezStepUtils:
 
         request_json = {
             "steps": steps,
-            "author_id": author_id,
             "recipe_id": recipe_id,
         }
         try:

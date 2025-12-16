@@ -31,8 +31,8 @@ def create_steps_api() -> Dict:
         )
 
     created_steps: List[Dict] = []
-    # Use provided author_id or fall back to authenticated user's ID
-    author_id = str(data.author_id) if data.author_id else str(g.user.user_id)
+    # Always use authenticated user's ID (never accept client-provided author_id)
+    author_id = str(g.user.user_id)
     try:
         for step in data.steps:
             created_step = StepRepository.create_step(

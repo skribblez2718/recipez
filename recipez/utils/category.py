@@ -23,7 +23,7 @@ class RecipezCategoryUtils:
     #########################[ start create_category ]#############################
     @staticmethod
     def create_category(
-        authorization: str, request: "Request", author_id: str, category_name: str
+        authorization: str, request: "Request", category_name: str
     ) -> List[Dict[str, str]]:
         """
         Creates a new category.
@@ -31,6 +31,7 @@ class RecipezCategoryUtils:
         Args:
             authorization (str): The authorization token.
             request (Request): The request object.
+            category_name (str): The name of the category.
 
         Returns:
             List[Dict[str, str]]: A list of categories.
@@ -43,7 +44,6 @@ class RecipezCategoryUtils:
                 method=current_app.config.get("RECIPEZ_HTTP_SESSION").post,
                 path="/api/category/create",
                 json={
-                    "author_id": author_id,
                     "category_name": category_name,
                 },
                 authorization=authorization,

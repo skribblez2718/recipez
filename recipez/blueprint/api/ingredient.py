@@ -33,8 +33,8 @@ def create_ingredients_api() -> Dict:
         )
 
     created_ingredients: List[Dict] = []
-    # Use provided author_id or fall back to authenticated user's ID
-    author_id = str(data.author_id) if data.author_id else str(g.user.user_id)
+    # Always use authenticated user's ID (never accept client-provided author_id)
+    author_id = str(g.user.user_id)
     try:
         for ingredient in data.ingredients:
             created_ingredient = IngredientRepository.create_ingredient(

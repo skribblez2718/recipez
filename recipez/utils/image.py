@@ -87,6 +87,17 @@ class RecipezImageValidator:
         self.img_quality = img_quality
         self.intensity = intensity
 
+        # Run validation immediately and store results
+        self._errors = self._validate_image()
+        self._scrubbed_data = None
+
+        # If valid, scrub the image
+        if not self._errors:
+            # Determine output format based on extension
+            ext = self.filename.split('.')[-1].lower()
+            new_format = "JPEG" if ext in ["jpg", "jpeg"] else "PNG"
+            self._scrubbed_data = self._scrub_image(self.image_data, new_format)
+
     #########################[ end __init__ ]###########################
 
     #########################[ start _is_valid_filename ]#########################
@@ -273,6 +284,45 @@ class RecipezImageValidator:
 
     #########################[ end _validate_image ]###########################
 
+    #########################[ start is_valid property ]#########################
+    @property
+    def is_valid(self) -> bool:
+        """
+        Returns True if the image passed all validation checks.
+
+        Returns:
+            bool: True if valid, False otherwise.
+        """
+        return len(self._errors) == 0
+
+    #########################[ end is_valid property ]###########################
+
+    #########################[ start error property ]#########################
+    @property
+    def error(self) -> str:
+        """
+        Returns validation error message or None if valid.
+
+        Returns:
+            str: Concatenated error messages, or None if no errors.
+        """
+        return "; ".join(self._errors) if self._errors else None
+
+    #########################[ end error property ]###########################
+
+    #########################[ start scrubbed_image property ]#########################
+    @property
+    def scrubbed_image(self) -> bytes:
+        """
+        Returns the sanitized image data. Only available if is_valid is True.
+
+        Returns:
+            bytes: The scrubbed image data, or None if validation failed.
+        """
+        return self._scrubbed_data
+
+    #########################[ end scrubbed_image property ]###########################
+
 
 ###################################[ end RecipezImageValidator ]###################################
 
@@ -289,7 +339,6 @@ class RecipezImageUtils(RecipezImageValidator):
     def create_image(
         authorization: str,
         request: "Request",
-        author_id: str,
         image_data: bytes,
         old_image_url: str = None,
     ) -> tuple:
@@ -300,7 +349,6 @@ class RecipezImageUtils(RecipezImageValidator):
         Args:
             authorization (str): The authorization token.
             request (Request): The request object.
-            author_id (str): The ID of the author.
             image_data (bytes): The binary data of the image.
             old_image_url (str, optional): The URL of the old image to be replaced. Defaults to None.
 
@@ -375,7 +423,6 @@ class RecipezImageUtils(RecipezImageValidator):
                 method=current_app.config.get("RECIPEZ_HTTP_SESSION").post,
                 path="/api/image/create",
                 json={
-                    "author_id": author_id,
                     "image_path": upload_path,
                     "image_data": scrubbed_data_b64,
                 },

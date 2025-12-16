@@ -131,7 +131,6 @@ def create_recipe_view():
             # No new category and no selection - default to first existing category
             recipe_form.category_selector.data = next(iter(category_id_to_name.keys()))
 
-        author_id = session.get("user_id", "")
         authorization = session.get("user_jwt", "")
         created_recipe = {}
 
@@ -140,7 +139,6 @@ def create_recipe_view():
             response = RecipezRecipeUtils.create_recipe_category(
                 authorization=authorization,
                 request=request,
-                author_id=author_id,
                 category_name=(
                     create_category_form.name.data.strip()
                     if create_category_form.name.data
@@ -182,7 +180,6 @@ def create_recipe_view():
             response = RecipezRecipeUtils.create_recipe_image(
                 authorization=authorization,
                 request=request,
-                author_id=author_id,
                 image_data=recipe_form.image.data if recipe_form.image.data else None,
             )
 
@@ -211,7 +208,6 @@ def create_recipe_view():
                 recipe_description=recipe_form.description.data.strip(),
                 recipe_category_id=recipe_category_id,
                 recipe_image_id=recipe_image_id,
-                recipe_author_id=author_id,
             )
 
             if response is None or (isinstance(response, dict) and "error" in response):
@@ -241,7 +237,6 @@ def create_recipe_view():
             response = RecipezRecipeUtils.create_recipe_ingredients(
                 authorization=authorization,
                 request=request,
-                author_id=author_id,
                 recipe_id=recipe_id,
                 ingredient_forms=recipe_form.ingredients.entries,
             )
@@ -272,7 +267,6 @@ def create_recipe_view():
             response = RecipezRecipeUtils.create_recipe_steps(
                 authorization=authorization,
                 request=request,
-                author_id=author_id,
                 recipe_id=recipe_id,
                 step_forms=recipe_form.steps.entries,
             )
@@ -534,7 +528,6 @@ def update_recipe_view(pk):
             # No new category and no selection - default to existing category
             recipe_form.category_selector.data = existing_recipe.get("recipe_category_id")
 
-        author_id = session.get("user_id", "")
         authorization = session.get("user_jwt", "")
 
         if recipe_form.validate_on_submit():

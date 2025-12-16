@@ -1,5 +1,5 @@
-from pydantic import BaseModel, constr
-from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, constr
+from typing import List
 from uuid import UUID
 from enum import Enum
 
@@ -83,12 +83,12 @@ class CreateIngredientSchema(BaseIngredientsSchema):
     Schema for validating ingredient creation.
 
     Attributes:
-        author_id (UUID, optional): The ID of the author.
-            If omitted, uses the authenticated user's ID.
-        recipe_id (UUID): The ID of the recipe.
+        ingredients (List[BaseIngredientSchema]): List of ingredients
+        recipe_id (UUID): The ID of the recipe
     """
 
-    author_id: Optional[UUID] = None
+    model_config = ConfigDict(extra="forbid")
+
     recipe_id: UUID
 
 
