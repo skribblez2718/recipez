@@ -84,13 +84,11 @@ def create_category() -> Union[str, Any]:
                 name, request, None, None, **template_params
             )
 
-        author_id = session.get("user_id", "")
         category_name = create_category_form.data["name"]
         try:
             response = RecipezCategoryUtils.create_category(
                 authorization=session.get("user_jwt", ""),
                 request=request,
-                author_id=author_id,
                 category_name=category_name,
             )
         except Exception as e:
