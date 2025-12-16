@@ -351,16 +351,11 @@ def delete_recipe_api(pk: str) -> Dict:
             "You do not have permission to delete this recipe",
         )
 
-    # Clean up associated image before deleting recipe
-    # ImageRepository.delete_image() already protects default images
-    if existing_recipe.recipe_image_id:
-        try:
-            ImageRepository.delete_image(existing_recipe.recipe_image_id)
-        except Exception as e:
-            # Log but don't fail - recipe deletion is primary operation
-            import logging
-            logging.warning(f"Failed to delete recipe image: {e}")
+    # Save image_id before deleting recipe (needed for cleanup after)
+    image_id_to_delete = existing_recipe.recipe_image_id
 
+    # Delete recipe first (cascades to steps and ingredients)
+    # Must delete recipe before image due to FK RESTRICT constraint
     try:
         deleted_recipe = RecipeRepository.delete_recipe(str(data.recipe_id))
     except Exception as e:
@@ -368,6 +363,17 @@ def delete_recipe_api(pk: str) -> Dict:
 
     if not deleted_recipe:
         return jsonify({"response": {"error": response_msg}})
+
+    # Clean up orphaned image after recipe is deleted
+    # ImageRepository.delete_image() already protects default images
+    if image_id_to_delete:
+        try:
+            ImageRepository.delete_image(image_id_to_delete)
+        except Exception as e:
+            # Log but don't fail - recipe deletion was successful
+            import logging
+            logging.warning(f"Failed to delete recipe image: {e}")
+
     return jsonify({"response": {"success": True}})
 
 

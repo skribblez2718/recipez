@@ -314,6 +314,7 @@
         </script>
         <script src="{{ url_for('static', filename='js/theme.js') }}" nonce="{{ script_nonce }}"></script>
         {% if g.user %}
+            <script src="{{ url_for('static', filename='js/session.js') }}" nonce="{{ script_nonce }}"></script>
             <script src="{{ url_for('static', filename='js/ai.js') }}" nonce="{{ script_nonce }}"></script>
         {% endif %}
         
