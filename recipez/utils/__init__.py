@@ -16,6 +16,7 @@ from recipez.utils.session import RecipezSessionUtils
 from recipez.utils.step import RecipezStepUtils
 from recipez.utils.user import RecipezUserUtils
 from recipez.utils.profile import RecipezProfileUtils
+from recipez.utils.validation import is_valid_uuid, safe_uuid_str
 
 
 __all__ = [
@@ -37,4 +38,6 @@ __all__ = [
     "RecipezStepUtils",
     "RecipezUserUtils",
     "RecipezProfileUtils",
+    "is_valid_uuid",
+    "safe_uuid_str",
 ]

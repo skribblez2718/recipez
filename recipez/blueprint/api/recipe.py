@@ -6,6 +6,7 @@ from recipez.utils import (
     RecipezAuthNUtils,
     RecipezAuthZUtils,
     RecipezErrorUtils,
+    is_valid_uuid,
 )
 from recipez.repository import (
     RecipeRepository,
@@ -110,23 +111,25 @@ def read_recipes_api() -> Dict:
         pass
 
     for recipe in all_recipes:
-        try:
-            category_id = recipe.get("recipe_category_id", "")
-            category = CategoryRepository.read_category_by_id(str(category_id))
-        except Exception as e:
-            return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+        # Lookup category with UUID validation
+        category_id = recipe.get("recipe_category_id")
+        if category_id and is_valid_uuid(category_id):
+            try:
+                category = CategoryRepository.read_category_by_id(str(category_id))
+                if category:
+                    recipe["recipe_category"] = category.as_dict()
+            except Exception as e:
+                return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
-        if category:
-            recipe["recipe_category"] = category.as_dict()
-
-        try:
-            image_id = recipe.get("recipe_image_id", "")
-            image = ImageRepository.read_image_by_id(str(image_id))
-        except Exception as e:
-            return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
-
-        if image:
-            recipe["recipe_image"] = image.as_dict()
+        # Lookup image with UUID validation
+        image_id = recipe.get("recipe_image_id")
+        if image_id and is_valid_uuid(image_id):
+            try:
+                image = ImageRepository.read_image_by_id(str(image_id))
+                if image:
+                    recipe["recipe_image"] = image.as_dict()
+            except Exception as e:
+                return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
         # Use pre-fetched author data from lookup
         author_id = recipe.get("recipe_author_id", "")
@@ -168,6 +171,7 @@ def read_recipes_api() -> Dict:
 def read_recipe_api(pk: str) -> Dict:
     """Return a single recipe by id."""
     name = "recipe.read_recipe_api"
+    response_msg = "Unable to retrieve recipe"
     try:
         data = ReadRecipeSchema(recipe_id=pk)
     except Exception as e:
@@ -186,38 +190,35 @@ def read_recipe_api(pk: str) -> Dict:
             name, request, e, "Unable to retrieve recipe"
         )
 
-    try:
-        category_id = recipe.get("recipe_category_id", "")
-        category = CategoryRepository.read_category_by_id(str(category_id))
-    except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+    # Lookup category with UUID validation
+    category_id = recipe.get("recipe_category_id")
+    if category_id and is_valid_uuid(category_id):
+        try:
+            category = CategoryRepository.read_category_by_id(str(category_id))
+            if category:
+                recipe["recipe_category"] = category.as_dict()
+        except Exception as e:
+            return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
-    if category:
-        recipe["recipe_category"] = category.as_dict()
+    # Lookup image with UUID validation
+    image_id = recipe.get("recipe_image_id")
+    if image_id and is_valid_uuid(image_id):
+        try:
+            image = ImageRepository.read_image_by_id(str(image_id))
+            if image:
+                recipe["recipe_image"] = image.as_dict()
+        except Exception as e:
+            return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
-    try:
-        image_id = recipe.get("recipe_image_id", "")
-        image = ImageRepository.read_image_by_id(str(image_id))
-    except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
-
-    if image:
-        recipe["recipe_image"] = image.as_dict()
-
-    try:
-        author_id = recipe.get("recipe_author_id", "")
-        if author_id:
-            try:
-                # Validate UUID format before database query
-                UUID(str(author_id))
-                author = UserRepository.get_user_by_id(str(author_id))
-                if author:
-                    recipe["recipe_author"] = author.as_dict()
-            except ValueError:
-                # Invalid UUID format, skip author lookup
-                pass
-    except Exception as e:
-        return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
+    # Lookup author with UUID validation
+    author_id = recipe.get("recipe_author_id")
+    if author_id and is_valid_uuid(author_id):
+        try:
+            author = UserRepository.get_user_by_id(str(author_id))
+            if author:
+                recipe["recipe_author"] = author.as_dict()
+        except Exception as e:
+            return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)
 
     recipe_id = recipe.get("recipe_id", "")
     try:

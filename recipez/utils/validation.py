@@ -1,10 +1,13 @@
 """
 Security validation utilities for user input.
 Prevents XSS, path traversal, and other injection attacks.
+Also provides UUID validation helpers.
 """
 
 import re
 from urllib.parse import urlparse
+from uuid import UUID
+from typing import Optional
 
 
 def validate_image_url(url) -> bool:
@@ -68,3 +71,65 @@ def validate_image_url(url) -> bool:
         return True
 
     return False
+
+
+def is_valid_uuid(value: str) -> bool:
+    """
+    Check if a string is a valid UUID format.
+
+    Args:
+        value: String to validate as UUID
+
+    Returns:
+        bool: True if valid UUID format, False otherwise
+
+    Examples:
+        >>> is_valid_uuid("550e8400-e29b-41d4-a716-446655440000")
+        True
+        >>> is_valid_uuid("None")
+        False
+        >>> is_valid_uuid("")
+        False
+        >>> is_valid_uuid(None)
+        False
+    """
+    if not value or value == "None":
+        return False
+    try:
+        UUID(str(value))
+        return True
+    except (ValueError, TypeError, AttributeError):
+        return False
+
+
+def safe_uuid_str(value) -> Optional[str]:
+    """
+    Convert a value to a string UUID only if it's a valid UUID format.
+
+    Prevents the "None" string bug where str(None) becomes "None" which
+    is then stored as an invalid UUID in the database.
+
+    Args:
+        value: Value to convert (can be UUID, string, or None)
+
+    Returns:
+        str | None: String representation of UUID if valid, None otherwise
+
+    Examples:
+        >>> safe_uuid_str("550e8400-e29b-41d4-a716-446655440000")
+        "550e8400-e29b-41d4-a716-446655440000"
+        >>> safe_uuid_str(None)
+        None
+        >>> safe_uuid_str("None")
+        None
+        >>> safe_uuid_str("")
+        None
+    """
+    if value is None or str(value) == "None" or str(value) == "":
+        return None
+    try:
+        # Validate UUID format
+        UUID(str(value))
+        return str(value)
+    except (ValueError, TypeError, AttributeError):
+        return None

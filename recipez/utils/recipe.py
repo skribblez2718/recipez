@@ -393,7 +393,7 @@ class RecipezRecipeUtils:
                     "recipe_name": recipe_name,
                     "recipe_description": recipe_description,
                     "recipe_category_id": str(recipe_category_id),
-                    "recipe_image_id": str(recipe_image_id),
+                    "recipe_image_id": str(recipe_image_id) if recipe_image_id else None,
                     "recipe_author_id": str(recipe_author_id),
                 },
             )

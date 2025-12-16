@@ -6,6 +6,7 @@ from pathlib import Path
 from flask import Blueprint, g, jsonify, request, url_for, current_app
 
 from recipez.utils import RecipezAuthNUtils, RecipezAuthZUtils, RecipezErrorUtils
+from recipez.utils.image import RecipezImageValidator
 from recipez.repository import ImageRepository
 from recipez.schema import CreateImageSchema, DeleteImageSchema
 from recipez.extensions import csrf
@@ -49,8 +50,20 @@ def create_image_api() -> Dict:
         upload_dir = Path(current_app.root_path) / "static" / "uploads"
         full_path = upload_dir / filename
 
-        # Decode and write the image
+        # Decode the image data
         image_bytes = b64decode(data.image_data)
+
+        # Validate and scrub the image (removes metadata, converts RGBA to RGB for JPEG)
+        validator = RecipezImageValidator(filename=filename, image_data=image_bytes)
+        if not validator.is_valid:
+            return RecipezErrorUtils.handle_validation_error(
+                name, request, validator.error, "Invalid image format"
+            )
+
+        # Use scrubbed (sanitized) image data
+        image_bytes = validator.scrubbed_image
+
+        # Write the validated image
         full_path.write_bytes(image_bytes)
 
         image_url = url_for("static", filename=f"uploads/{filename}", _external=False)

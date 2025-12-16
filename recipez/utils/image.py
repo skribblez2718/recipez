@@ -165,9 +165,32 @@ class RecipezImageValidator:
 
         Returns:
             bytes: The processed image data.
+
+        Note:
+            JPEG format does not support transparency (alpha channel).
+            Images with RGBA, P, or LA modes are converted to RGB with a white background.
         """
         with BytesIO(image_data) as img_stream:
             img = Image.open(img_stream)
+
+            # Convert RGBA/P/LA to RGB for JPEG compatibility
+            # JPEG does not support alpha channel (transparency)
+            if new_format.upper() == "JPEG" and img.mode in ("RGBA", "P", "LA"):
+                # Create white background for transparency
+                background = Image.new("RGB", img.size, (255, 255, 255))
+                if img.mode == "P":
+                    img = img.convert("RGBA")
+                # Paste image with alpha mask if available
+                if img.mode in ("RGBA", "LA"):
+                    alpha = img.split()[-1]
+                    background.paste(img, mask=alpha)
+                else:
+                    background.paste(img)
+                img = background
+            elif img.mode not in ("RGB", "L"):
+                # Convert other modes (like CMYK) to RGB
+                img = img.convert("RGB")
+
             resized_img = self._resize(img)
             with BytesIO() as output_stream:
                 resized_img.save(

@@ -43,8 +43,8 @@ class RecipezRecipeModel(AsDictMixin, sqla_db.Model):
     )
     recipe_image_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("recipez.recipez_image.image_id", ondelete="SET NULL"),
-        nullable=True,  # Allow NULL so recipes can use default image when custom image is deleted
+        ForeignKey("recipez.recipez_image.image_id", ondelete="RESTRICT"),
+        nullable=False,  # All recipes must have a valid image
     )
     recipe_author_id = Column(
         UUID(as_uuid=True),

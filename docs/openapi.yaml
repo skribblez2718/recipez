@@ -1790,12 +1790,12 @@ components:
         recipe_name:
           type: string
           minLength: 2
-          maxLength: 50
+          maxLength: 100
           pattern: "^[0-9a-zA-Z-_()., '&]+$"
         recipe_description:
           type: string
           minLength: 2
-          maxLength: 500
+          maxLength: 2000
         recipe_category_id:
           type: string
           format: uuid
@@ -1814,13 +1814,13 @@ components:
         recipe_name:
           type: string
           minLength: 2
-          maxLength: 50
+          maxLength: 100
           pattern: "^[0-9a-zA-Z-_()., '&]+$"
           nullable: true
         recipe_description:
           type: string
           minLength: 2
-          maxLength: 500
+          maxLength: 2000
           nullable: true
         recipe_category_id:
           type: string
@@ -2092,7 +2092,7 @@ components:
         ingredient_name:
           type: string
           minLength: 2
-          maxLength: 50
+          maxLength: 100
           pattern: "^[a-zA-Z0-9\\s()\\-°]+$"
         ingredient_quantity:
           type: string
@@ -2130,7 +2130,7 @@ components:
         ingredient_name:
           type: string
           minLength: 2
-          maxLength: 50
+          maxLength: 100
           pattern: "^[a-zA-Z0-9\\s()\\-°]+$"
         ingredient_quantity:
           type: string

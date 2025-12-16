@@ -200,7 +200,7 @@ def create_recipe_view():
 
             new_image_created = response.get("new_image_created", False)
             recipe_image = response.get("image", {})
-            recipe_image_id = recipe_image.get("image_id", "")
+            recipe_image_id = recipe_image.get("image_id") or None
             created_recipe["recipe_image"] = recipe_image
 
             # Step 3: Create the recipe
