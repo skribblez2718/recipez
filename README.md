@@ -11,7 +11,7 @@ A full-featured recipe management web application with AI-powered recipe generat
 Recipez is a Flask-based web application for managing, organizing, and sharing recipes. It features user authentication, recipe CRUD operations with image uploads, and AI-powered features for generating recipes from ingredients and creating organized grocery lists from multiple recipes.
 
 <p align="center">
-  <video src="docs/img/preview.mp4" controls width="800"></video>
+  <img src="docs/img/preview.gif" alt="Recipez Preview" width="800">
 </p>
 
 ## Features
