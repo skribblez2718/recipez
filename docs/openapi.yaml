@@ -1955,18 +1955,22 @@ components:
       type: object
       required:
         - image_data
-        - image_path
+        - filename
       properties:
         image_data:
           type: string
           format: byte
           description: Base64-encoded image data
-        image_path:
+        filename:
           type: string
           pattern: "^[a-zA-Z0-9_\\-\\.]+$"
           description: |
-            Filename for the uploaded image (e.g., "recipe-image.jpg").
-            Will be saved to the server's uploads directory automatically.
+            Filename for the uploaded image.
+
+            **Recommended:** Use UUID format (e.g., "550e8400-e29b-41d4-a716-446655440000.jpg").
+            Non-UUID filenames will be automatically converted to UUID format by the server
+            to ensure unique file names and prevent overwrites.
+
             Must have .jpg, .jpeg, or .png extension.
         author_id:
           type: string

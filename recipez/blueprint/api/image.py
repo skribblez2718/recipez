@@ -1,4 +1,5 @@
 import re
+import uuid
 from base64 import b64decode
 from typing import Dict
 from uuid import UUID
@@ -16,6 +17,12 @@ bp = Blueprint("api/image", __name__, url_prefix="/api/image")
 # Valid filename pattern: alphanumeric, underscores, hyphens, dots
 VALID_FILENAME_PATTERN = re.compile(r'^[a-zA-Z0-9_\-\.]+$')
 VALID_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
+
+# UUID filename pattern: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.ext
+UUID_FILENAME_PATTERN = re.compile(
+    r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(jpg|jpeg|png)$',
+    re.IGNORECASE
+)
 
 
 #########################[ start create_image_api ]##############################
@@ -35,16 +42,26 @@ def create_image_api() -> Dict:
 
     try:
         # Extract just the filename (handles both full paths and simple filenames)
-        filename = Path(data.image_path).name
+        raw_filename = Path(data.filename).name
 
-        # Validate filename for security
-        if not VALID_FILENAME_PATTERN.match(filename):
-            raise ValueError(f"Invalid filename: {filename}")
+        # Validate filename for security (basic pattern check)
+        if not VALID_FILENAME_PATTERN.match(raw_filename):
+            raise ValueError(f"Invalid filename: {raw_filename}")
 
         # Validate file extension
-        ext = Path(filename).suffix.lower()
+        ext = Path(raw_filename).suffix.lower()
         if ext not in VALID_IMAGE_EXTENSIONS:
             raise ValueError(f"Invalid image extension: {ext}")
+
+        # Enforce UUID filename format - auto-convert if not UUID format
+        if UUID_FILENAME_PATTERN.match(raw_filename):
+            filename = raw_filename
+        else:
+            # Convert non-UUID filename to UUID format for safety
+            filename = f"{uuid.uuid4()}{ext}"
+            current_app.logger.info(
+                f"Converted filename '{raw_filename}' to UUID format: '{filename}'"
+            )
 
         # Construct the full upload path using the app's static/uploads directory
         upload_dir = Path(current_app.root_path) / "static" / "uploads"

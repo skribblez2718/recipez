@@ -409,11 +409,8 @@ class RecipezImageUtils(RecipezImageValidator):
         new_format = "JPEG" if ext_lower in ["jpg", "jpeg"] else "PNG"
         scrubbed_data: bytes = validator._scrub_image(file_data, new_format)
 
-        # Generate a unique filename for the new image
+        # Generate a unique UUID filename for the new image
         new_filename = f"{uuid.uuid4()}.{new_format.lower()}"
-        upload_path = path.join(
-            current_app.root_path, "static", "uploads", new_filename
-        )
 
         # Encode image data as base64 string
         scrubbed_data_b64: str = base64.b64encode(scrubbed_data).decode("utf-8")
@@ -423,7 +420,7 @@ class RecipezImageUtils(RecipezImageValidator):
                 method=current_app.config.get("RECIPEZ_HTTP_SESSION").post,
                 path="/api/image/create",
                 json={
-                    "image_path": upload_path,
+                    "filename": new_filename,
                     "image_data": scrubbed_data_b64,
                 },
                 authorization=authorization,

@@ -7,28 +7,29 @@ import re
 
 class BaseImageSchema(BaseModel):
     """
-    Schema for validating image path/filename.
+    Schema for validating image filename.
 
     Attributes:
-        image_path (str): The filename for the image (e.g., "recipe-image.jpg").
+        filename (str): The filename for the image (e.g., "550e8400-e29b-41d4-a716-446655440000.jpg").
+                       Non-UUID filenames will be auto-converted to UUID format by the API.
     """
 
-    image_path: str
+    filename: str
 
-    @field_validator('image_path')
+    @field_validator('filename')
     @classmethod
-    def validate_image_path(cls, v: str) -> str:
-        """Validate that image_path is a safe filename."""
+    def validate_filename(cls, v: str) -> str:
+        """Validate that filename is safe. UUID enforcement happens in API layer."""
         # Extract just the filename in case a full path was provided
         from pathlib import Path
-        filename = Path(v).name
+        name = Path(v).name
 
-        # Validate filename pattern
-        if not re.match(r'^[a-zA-Z0-9_\-\.]+$', filename):
+        # Validate filename pattern (basic safety - UUID enforcement in API layer)
+        if not re.match(r'^[a-zA-Z0-9_\-\.]+$', name):
             raise ValueError('Filename must contain only alphanumeric characters, underscores, hyphens, and dots')
 
         # Validate extension
-        ext = Path(filename).suffix.lower()
+        ext = Path(name).suffix.lower()
         if ext not in {'.jpg', '.jpeg', '.png'}:
             raise ValueError('File must have .jpg, .jpeg, or .png extension')
 
@@ -44,7 +45,8 @@ class CreateImageSchema(BaseImageSchema):
     Schema for creating an image.
 
     Attributes:
-        image_path (str): The filename for the image (e.g., "recipe-image.jpg")
+        filename (str): The filename for the image (e.g., "550e8400-e29b-41d4-a716-446655440000.jpg").
+                       Non-UUID filenames will be auto-converted to UUID format by the API.
         image_data (str): The base64-encoded image data
     """
 
