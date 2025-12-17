@@ -283,13 +283,13 @@ Email verification requires a Gmail App Password. Regular Gmail passwords won't 
 3. Scroll to the bottom and click **App passwords**
 4. Enter a name for the app (e.g., "Recipez")
 5. Click **Create**
-6. Copy the 16-character password (shown with spaces, but use it without spaces)
+6. Copy the 16-character password
 7. Set the `RECIPEZ_SENDER_PASSWORD` environment variable to this value
 
 **Example:**
 ```bash
 # In .env or .env.docker
-RECIPEZ_SENDER_PASSWORD=abcdwxyzabcdwxyz
+RECIPEZ_SENDER_PASSWORD="abcd wxyz abcd wxyz"
 ```
 
 **Note:** If you don't see the "App passwords" option, ensure 2-Step Verification is enabled first.
