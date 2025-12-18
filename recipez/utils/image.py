@@ -1,6 +1,5 @@
 import re
 import magic
-import imghdr
 import random
 import os
 import uuid
@@ -142,13 +141,20 @@ class RecipezImageValidator:
     #########################[ start _is_valid_image ]#########################
     def _is_valid_image(self) -> bool:
         """
-        Check if the image data is a valid image.
+        Check if the image data is a valid image using Pillow.
+
+        This replaces imghdr.what() which is deprecated (removed in Python 3.13)
+        and doesn't handle all JPEG variants (progressive, EXIF-header, etc.)
 
         Returns:
             bool: True if the image data is valid, False otherwise.
         """
-        image_type = imghdr.what(None, h=self.image_data)
-        return image_type is not None
+        try:
+            img = Image.open(BytesIO(self.image_data))
+            img.verify()  # Verify it's a valid image
+            return img.format in ['JPEG', 'PNG']
+        except Exception:
+            return False
 
     #########################[ end _is_valid_image ]###########################
 
