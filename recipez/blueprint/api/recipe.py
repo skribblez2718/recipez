@@ -295,6 +295,7 @@ def update_recipe_api(pk: str) -> Dict:
             data.recipe_description,
             str(data.recipe_category_id) if data.recipe_category_id else None,
             str(data.recipe_image_id) if data.recipe_image_id else None,
+            cleanup_old_image=True,  # Delete old image when image changes
         )
     except Exception as e:
         return RecipezErrorUtils.handle_api_error(name, request, e, response_msg)

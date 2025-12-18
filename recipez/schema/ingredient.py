@@ -52,7 +52,7 @@ class BaseIngredientSchema(BaseModel):
     """
 
     ingredient_quantity: constr(
-        pattern=r"^(\d+(\.\d+)?|\d+/\d+)(\s*-\s*(\d+(\.\d+)?|\d+/\d+))?$",
+        pattern=r"^(\d*\.?\d+|\d+/\d+)(\s*-\s*(\d*\.?\d+|\d+/\d+))?$",
         strip_whitespace=True,
     )
     ingredient_measurement: MeasurementEnum

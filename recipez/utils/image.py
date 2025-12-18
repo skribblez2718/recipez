@@ -370,7 +370,8 @@ class RecipezImageUtils(RecipezImageValidator):
         validator = RecipezImageValidator(filename=filename, image_data=file_data)
         validation_errors = validator._validate_image()
         if validation_errors:
-            return jsonify({"error": validation_errors}), 400
+            error_msg = "; ".join(validation_errors) if isinstance(validation_errors, list) else str(validation_errors)
+            return {"error": error_msg}
 
         # Remove old file if it's not a default image (recipe or user)
         # Issue 2 (CRITICAL): Enhanced path traversal protection

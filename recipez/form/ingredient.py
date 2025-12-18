@@ -56,7 +56,7 @@ class IngredientForm(FlaskForm):
         validators=[
             InputRequired(),
             Regexp(
-                regex=r"^(\d+(\.\d+)?|\d+/\d+)(\s*-\s*(\d+(\.\d+)?|\d+/\d+))?$",
+                regex=r"^(\d*\.?\d+|\d+/\d+)(\s*-\s*(\d*\.?\d+|\d+/\d+))?$",
                 message="Quantity must be an integer, decimal or fraction, or a range of integers, decimals or fractions",
             ),
         ],

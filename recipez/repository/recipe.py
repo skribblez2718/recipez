@@ -140,6 +140,7 @@ class RecipeRepository:
         description: Optional[str] = None,
         category_id: Optional[str] = None,
         image_id: Optional[str] = None,
+        cleanup_old_image: bool = False,
     ) -> bool:
         """
         Update a recipe in the database.
@@ -150,12 +151,16 @@ class RecipeRepository:
             description (Optional[str]): The new description of the recipe.
             category_id (Optional[str]): The new category ID for this recipe.
             image_id (Optional[str]): The new image ID for this recipe.
+            cleanup_old_image (bool): If True, delete the old image when image_id changes.
 
         Returns:
             bool: True if the update was successful, False otherwise.
         """
         recipe = RecipeRepository.get_recipe_by_id(recipe_id)
         if recipe:
+            # Capture old image ID before updating (for potential cleanup)
+            old_image_id = str(recipe.recipe_image_id) if recipe.recipe_image_id else None
+
             if name is not None:
                 recipe.recipe_name = name
             if description is not None:
@@ -165,6 +170,16 @@ class RecipeRepository:
             if image_id is not None:
                 recipe.recipe_image_id = image_id
             sqla_db.session.commit()
+
+            # Cleanup old image if requested and image changed
+            if cleanup_old_image and image_id and old_image_id and image_id != old_image_id:
+                try:
+                    from recipez.repository.image import ImageRepository
+                    ImageRepository.delete_image(old_image_id)
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Failed to delete old recipe image {old_image_id}: {e}")
+
             return True
         return False
 

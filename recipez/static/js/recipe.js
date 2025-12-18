@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
         /**
          * Reindex existing items from 0 upward immediately on page load
          * and attach event listeners to pre-existing delete buttons.
+         * Also update delete button visibility based on item count.
          */
         document.addEventListener("DOMContentLoaded", () => {
             const ingredientsList = document.querySelector("#ingredients-list");
@@ -38,11 +39,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (ingredientsList) {
                 resetIds(ingredientsList);
                 attachDeleteListeners("#ingredients-list"); // Attach delete listeners for existing buttons
+                updateDeleteButtonVisibility(ingredientsList); // Ensure proper visibility
             }
 
             if (stepsList) {
                 resetIds(stepsList);
                 attachDeleteListeners("#steps-list"); // Attach delete listeners for existing buttons
+                updateDeleteButtonVisibility(stepsList); // Ensure proper visibility
             }
         });
 
@@ -67,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Append a new delete button if it doesn't exist
             let deleteButton = newListItem.querySelector(".delete-step-btn");
             if (!deleteButton) {
-                deleteButton = createDeleteButton();
+                deleteButton = createDeleteButton(itemType);
                 // For steps, append to the inner div container
                 const innerContainer = newListItem.querySelector(".flex-1") || newListItem;
                 innerContainer.appendChild(deleteButton);
@@ -75,6 +78,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Attach the delete event listener to the new button
             deleteButton.addEventListener("click", (event) => deleteListItem(event));
+
+            // Update delete button visibility (show on first item if now >1 items)
+            updateDeleteButtonVisibility(listElement);
         };
 
         // Returns an integer index, one higher than the highest existing index
@@ -160,12 +166,44 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         // Create a new delete button
-        const createDeleteButton = () => {
+        const createDeleteButton = (itemType) => {
             const deleteButton = document.createElement("button");
-            deleteButton.className = "btn btn-danger btn-sm mt-2 delete-step-btn";
+            deleteButton.className = itemType === 'ingredient'
+                ? "btn btn-danger btn-sm mt-3 delete-step-btn"
+                : "btn btn-danger btn-sm mt-2 delete-step-btn";
             deleteButton.type = "button";
-            deleteButton.innerHTML = '<i class="fa-solid fa-trash mr-1"></i>Delete Step';
+            deleteButton.tabIndex = -1;
+            const label = itemType === 'ingredient' ? 'Delete Ingredient' : 'Delete Step';
+            deleteButton.innerHTML = `<i class="fa-solid fa-trash mr-1"></i>${label}`;
             return deleteButton;
+        };
+
+        // Update delete button visibility based on item count
+        // Ensures delete buttons are shown when >1 item, hidden when only 1 item
+        const updateDeleteButtonVisibility = (listElement) => {
+            const items = listElement.children;
+            const itemType = items.length > 0 ? items[0].id.split("-")[0] : '';
+
+            Array.from(items).forEach((item) => {
+                let deleteBtn = item.querySelector('.delete-step-btn');
+
+                if (items.length === 1) {
+                    // Hide delete button when only one item
+                    if (deleteBtn) {
+                        deleteBtn.style.display = 'none';
+                    }
+                } else {
+                    // Show delete button when multiple items, create if missing
+                    if (!deleteBtn) {
+                        deleteBtn = createDeleteButton(itemType);
+                        // For steps, append to the inner div container; for ingredients, append to li
+                        const innerContainer = item.querySelector(".flex-1") || item;
+                        innerContainer.appendChild(deleteBtn);
+                        deleteBtn.addEventListener("click", (event) => deleteListItem(event));
+                    }
+                    deleteBtn.style.display = '';
+                }
+            });
         };
 
         // Convert "ingredient-3-quantity" --> "ingredient-4-quantity", etc.
@@ -187,6 +225,8 @@ document.addEventListener("DOMContentLoaded", () => {
             listItem.remove();
             // Reindex everything from 0 again
             resetIds(listElement);
+            // Update delete button visibility (hide if only 1 item remains)
+            updateDeleteButtonVisibility(listElement);
         };
 
         // Reindex all list items from 0 to N-1
@@ -304,6 +344,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // Attach delete listeners to existing ingredients and steps
         attachDeleteListeners("#ingredients-list");
         attachDeleteListeners("#steps-list");
+
+        // Update delete button visibility based on initial item count
+        const ingredientsList = document.querySelector("#ingredients-list");
+        const stepsList = document.querySelector("#steps-list");
+        if (ingredientsList) updateDeleteButtonVisibility(ingredientsList);
+        if (stepsList) updateDeleteButtonVisibility(stepsList);
 
 
     } else if (viewPathRegex.test(path)) {

@@ -131,7 +131,7 @@
                                     {{ ingredient.ingredient_name(class="form-control", placeholder="flour") }}
                                 </div>
                             </div>
-                            {% if not loop.first %}
+                            {% if recipe_form.ingredients|length > 1 %}
                                 <button type="button" class="btn btn-danger btn-sm mt-3 delete-step-btn" tabindex="-1">
                                     <i class="fa-solid fa-trash mr-1"></i>
                                     Delete Ingredient
@@ -165,7 +165,7 @@
                                     {{ step.step.label(class_="form-label text-sm") }}
                                     {{ step.step(class="form-control", rows=3, placeholder="Describe this step...") }}
                                 </div>
-                                {% if not loop.first %}
+                                {% if recipe_form.steps|length > 1 %}
                                     <button type="button" class="btn btn-danger btn-sm mt-2 delete-step-btn" tabindex="-1">
                                         <i class="fa-solid fa-trash mr-1"></i>
                                         Delete Step
