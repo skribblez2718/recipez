@@ -14,9 +14,10 @@ from recipez.extensions import csrf
 
 bp = Blueprint("api/image", __name__, url_prefix="/api/image")
 
-# Valid filename pattern: alphanumeric, underscores, hyphens, dots
-VALID_FILENAME_PATTERN = re.compile(r'^[a-zA-Z0-9_\-\.]+$')
-VALID_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
+# Valid filename pattern: alphanumeric, underscores, hyphens, dots, spaces, parentheses, brackets
+SAFE_FILENAME_CHARS = re.compile(r'^[a-zA-Z0-9_\-\.\s\(\)\[\]]+$')
+DANGEROUS_PATTERNS = re.compile(r'(\.\.|/|\\|\x00)')
+VALID_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.heic', '.heif', '.webp'}
 
 # UUID filename pattern: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.ext
 UUID_FILENAME_PATTERN = re.compile(
@@ -44,9 +45,11 @@ def create_image_api() -> Dict:
         # Extract just the filename (handles both full paths and simple filenames)
         raw_filename = Path(data.filename).name
 
-        # Validate filename for security (basic pattern check)
-        if not VALID_FILENAME_PATTERN.match(raw_filename):
-            raise ValueError(f"Invalid filename: {raw_filename}")
+        # Validate filename for security (defense in depth)
+        if DANGEROUS_PATTERNS.search(raw_filename):
+            raise ValueError("Filename contains unsafe characters")
+        if not SAFE_FILENAME_CHARS.match(raw_filename):
+            raise ValueError("Filename contains unsupported characters")
 
         # Validate file extension
         ext = Path(raw_filename).suffix.lower()

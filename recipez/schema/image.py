@@ -24,14 +24,18 @@ class BaseImageSchema(BaseModel):
         from pathlib import Path
         name = Path(v).name
 
+        # Block dangerous patterns first (defense in depth)
+        if re.search(r'(\.\.|/|\\|\x00)', name):
+            raise ValueError('Filename contains unsafe characters')
+
         # Validate filename pattern (basic safety - UUID enforcement in API layer)
-        if not re.match(r'^[a-zA-Z0-9_\-\.]+$', name):
-            raise ValueError('Filename must contain only alphanumeric characters, underscores, hyphens, and dots')
+        if not re.match(r'^[a-zA-Z0-9_\-\.\s\(\)\[\]]+$', name):
+            raise ValueError('Filename contains unsupported characters')
 
         # Validate extension
         ext = Path(name).suffix.lower()
-        if ext not in {'.jpg', '.jpeg', '.png'}:
-            raise ValueError('File must have .jpg, .jpeg, or .png extension')
+        if ext not in {'.jpg', '.jpeg', '.png', '.heic', '.heif', '.webp'}:
+            raise ValueError('File must have .jpg, .jpeg, .png, .heic, .heif, or .webp extension')
 
         return v
 

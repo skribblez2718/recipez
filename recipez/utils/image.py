@@ -7,6 +7,13 @@ import base64
 import json
 
 from flask import current_app, jsonify
+
+# Register HEIF/HEIC support with Pillow
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass  # HEIC support not available
 from uuid import UUID
 from os import path
 from io import BytesIO
@@ -53,9 +60,9 @@ class RecipezImageValidator:
         self,
         filename: str,
         image_data: bytes,
-        allowed_extensions: list[str] = ["jpg", "jpeg", "png"],
-        allowed_types: list[str] = ["image/jpeg", "image/png"],
-        max_size: int = 2097152,
+        allowed_extensions: list[str] = ["jpg", "jpeg", "png", "heic", "heif", "webp"],
+        allowed_types: list[str] = ["image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"],
+        max_size: int = 10485760,  # 10 MB
         img_width: int = 500,
         img_height: int = 500,
         img_quality: int = 85,
@@ -104,11 +111,18 @@ class RecipezImageValidator:
         """
         Check if the filename is valid.
 
+        Allows common characters from various devices (spaces, parentheses, brackets)
+        while blocking path traversal and injection attempts.
+
         Returns:
             bool: True if the filename is valid, False otherwise.
         """
-        pattern = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
-        return bool(pattern.match(self.filename))
+        # Block dangerous patterns first (defense in depth)
+        if re.search(r'(\.\.|/|\\|\x00)', self.filename):
+            return False
+
+        # Allow common filename characters
+        return bool(re.match(r"^[a-zA-Z0-9_\-\.\s\(\)\[\]]+$", self.filename))
 
     #########################[ end _is_valid_filename ]###########################
 
@@ -152,7 +166,7 @@ class RecipezImageValidator:
         try:
             img = Image.open(BytesIO(self.image_data))
             img.verify()  # Verify it's a valid image
-            return img.format in ['JPEG', 'PNG']
+            return img.format in ['JPEG', 'PNG', 'HEIF', 'WEBP']
         except Exception:
             return False
 
@@ -275,16 +289,16 @@ class RecipezImageValidator:
         """
         errors = []
         if not self._is_valid_filename():
-            errors.append("Invalid file name")
+            errors.append("File name contains unsupported characters. Use only letters, numbers, spaces, underscores, hyphens, and dots.")
 
         if not (self._is_valid_extension() and self._is_valid_filetype()):
-            errors.append("File must be PNG or JPEG")
+            errors.append("File must be JPEG, PNG, HEIC, or WebP format")
 
         if not self._is_valid_image():
             errors.append("Invalid image file")
 
         if not self._is_valid_file_size():
-            errors.append("File must be 2MB or less")
+            errors.append("File must be 10 MB or less")
 
         return errors
 
