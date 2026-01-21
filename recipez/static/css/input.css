@@ -1341,7 +1341,7 @@
   }
 
   .category-list {
-    overflow: hidden;
+    overflow-y: auto;
     transition: max-height 300ms ease, opacity 200ms ease, margin 200ms ease;
     max-height: 500px;
     opacity: 1;
@@ -1352,6 +1352,19 @@
     max-height: 0;
     opacity: 0;
     margin-top: 0;
+  }
+
+  /* Mobile category list responsive height */
+  @media (max-width: 640px) {
+    .category-list {
+      max-height: 300px;
+    }
+  }
+
+  @media (max-width: 375px) {
+    .category-list {
+      max-height: 250px;
+    }
   }
 
   /* === Category Filter Pills (Flexbox Wrap) === */
